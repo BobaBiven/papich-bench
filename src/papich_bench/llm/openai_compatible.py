@@ -13,6 +13,7 @@ Ollama and some free tiers).
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import httpx
 
@@ -38,23 +39,33 @@ class OpenAICompatibleLLM(LLMClient):
             "Respond with a single JSON object and nothing else. It must validate "
             f"against this JSON schema:\n{schema_json}"
         )
-        payload = {
-            "model": self.model,
-            "temperature": 0,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": full_system},
-                {"role": "user", "content": prompt},
-            ],
-        }
-        response = await self._client.post(
-            f"{self._base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {self._api_key}"},
-            json=payload,
-        )
-        response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"]
+        messages = [
+            {"role": "system", "content": full_system},
+            {"role": "user", "content": prompt},
+        ]
+        content = await self._chat(messages)
         return schema.model_validate_json(_strip_code_fence(content))
+
+    async def _chat(self, messages: list[dict[str, str]]) -> str:
+        base: dict[str, Any] = {"model": self.model, "temperature": 0, "messages": messages}
+        # Prefer JSON mode, but some free/hosted models reject `response_format`.
+        # Fall back to a plain request — the schema is already pinned in the
+        # prompt and we validate the result with pydantic either way.
+        attempts: tuple[dict[str, Any], ...] = ({"response_format": {"type": "json_object"}}, {})
+        for extra in attempts:
+            response = await self._client.post(
+                f"{self._base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json={**base, **extra},
+            )
+            if extra and response.status_code in (400, 404, 422):
+                continue
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"]
+            if not isinstance(content, str):
+                raise RuntimeError("OpenAI-compatible endpoint returned non-text content")
+            return content
+        raise RuntimeError("unreachable")  # pragma: no cover
 
     async def aclose(self) -> None:
         await self._client.aclose()

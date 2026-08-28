@@ -49,18 +49,44 @@ Each run writes a full `results/<timestamp>.json` and prints a leaderboard:
 
 ```
         Leaderboard
- #  Answerer       Score  Found  Truthful  Errors  Latency
- 1  llm_websearch    88%   1.86      1.71       0     4.2s
- 2  tavily           71%   1.57      1.29       0     1.1s
+ #  Answerer     Score  Found  Truthful  Errors  Latency
+ 1  tavily         71%   1.57      1.29       0     1.1s
+ 2  llm_direct     54%   1.14      1.00       0     2.3s
 ```
 
-## Keeping it free
+## Zero-cost quickstart
 
-- **Judge:** defaults to Claude (`claude-sonnet-5`). To use a free endpoint,
-  set `judge.backend: openai` in the config and point `OPENAI_BASE_URL` at Groq,
-  Google's OpenAI-compat endpoint, or a local **Ollama** (`http://localhost:11434/v1`,
-  no key). The same `openai` backend works for LLM-based answerers.
-- **Search:** `tavily` has a free tier and is the default contestant.
+The defaults cost **nothing**. Both the judge and the `llm_direct` contestant run
+on a free [OpenRouter](https://openrouter.ai) model (DeepSeek).
+
+1. Get a free key at <https://openrouter.ai/keys>.
+2. In `.env`, set `OPENAI_API_KEY=<your OpenRouter key>` (the base URL already
+   defaults to OpenRouter).
+3. Smallest possible run — one signup, no search key, just the LLM baseline:
+
+   ```bash
+   papich-bench run --answerers llm_direct
+   ```
+
+4. To also compare a real search engine, get a free [Tavily](https://app.tavily.com)
+   key, add `TAVILY_API_KEY` to `.env`, and run the full default config:
+
+   ```bash
+   papich-bench run --html report.html
+   ```
+
+Swap the free model for any other zero-price id (e.g. `z-ai/glm-4.5-air:free`) in
+`configs/default.yaml`; browse them at <https://openrouter.ai/models?max_price=0>.
+
+## Keeping it free — the knobs
+
+- **Judge & LLM answerers:** the `openai` backend points at `OPENAI_BASE_URL`.
+  Free options: **OpenRouter** `:free` models (default), **Groq**'s free tier, or
+  a fully-local **Ollama** (`http://localhost:11434/v1`, no key needed).
+- **`llm_direct`:** an LLM answering from memory — no search key, so it's free
+  on the same OpenRouter model. Also a useful baseline: does search beat a plain LLM?
+- **Search:** `tavily` and `google_serpapi` (SerpAPI) both have free tiers.
+  `perplexity` and `llm_websearch` (Claude) are **paid** and off by default.
 - **Caching:** every answer and judgement is cached under `.cache/`, so re-runs
   and report tweaks cost nothing. Use `--no-cache` to force a fresh run.
 
@@ -117,7 +143,7 @@ src/papich_bench/
   registry.py     # @register_answerer name -> class
   dataset.py      # load/validate the questions YAML
   cache.py        # on-disk JSON cache
-  answerers/      # one file per contestant (tavily, perplexity, google_serpapi, llm_websearch)
+  answerers/      # one file per contestant (llm_direct, tavily, perplexity, google_serpapi, llm_websearch)
   llm/            # LLMClient interface + Anthropic and OpenAI-compatible backends
   judge.py        # LLM-as-judge (found + truthful rubric)
   runner.py       # async orchestration with bounded concurrency + caching

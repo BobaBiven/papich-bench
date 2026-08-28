@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from papich_bench.answerers import (  # noqa: F401 - imported for side effects
     google_serpapi,
+    llm_direct,
     llm_websearch,
     perplexity,
     tavily,

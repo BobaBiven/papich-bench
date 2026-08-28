@@ -1,28 +1,39 @@
-# Which questions to ask, who answers them, and who judges.
+# Zero-cost defaults.
 #
-# `answerers` accepts either a bare name (uses defaults) or a
-# {name, options} mapping for per-answerer overrides. Comment out any
-# answerer whose API key you don't have — see .env.example.
+# Judge + the `llm_direct` contestant both run on a FREE OpenRouter model
+# (DeepSeek here). The only extra you need for the second contestant (`tavily`)
+# is a free Tavily key — comment it out for a run that needs just one signup.
+#
+# `answerers` accepts either a bare name (uses its defaults) or a
+# {name, options} mapping for per-answerer overrides.
 
 dataset: datasets/obscure.yaml
 
 answerers:
-  - tavily                       # search engine (free tier) — the default contestant
-  - name: llm_websearch          # an LLM that searches the web, as an agent
+  # Baseline: an LLM answering from memory, no web search. Needs no search key —
+  # runs entirely on the free OpenRouter model. This is the "does search even
+  # beat a plain LLM?" contestant.
+  - name: llm_direct
     options:
-      model: claude-sonnet-5
-      max_uses: 5
-  # - perplexity                 # needs PERPLEXITY_API_KEY
-  # - name: google_serpapi       # needs SERPAPI_API_KEY (+ a summarizer LLM)
-  #   options:
-  #     summarizer_backend: anthropic
-  #     summarizer_model: claude-sonnet-5
+      backend: openai
+      model: deepseek/deepseek-chat-v3-0324:free
 
-# The LLM that grades every answer. Swap backend to "openai" to use a free
-# OpenAI-compatible endpoint (Groq / Gemini / Ollama) via OPENAI_BASE_URL.
+  # A real search engine (free tier). Needs TAVILY_API_KEY — comment out to run
+  # with only the OpenRouter signup.
+  - tavily
+
+  # --- Paid / optional, left off by default -------------------------------
+  # - perplexity                 # needs PERPLEXITY_API_KEY (paid)
+  # - name: llm_websearch        # Claude native web search — needs a paid Anthropic key
+  #   options: { model: claude-sonnet-5 }
+  # - name: google_serpapi       # SerpAPI free tier + a summarizer LLM
+  #   options: { summarizer_backend: openai, summarizer_model: deepseek/deepseek-chat-v3-0324:free }
+
+# The LLM that grades every answer. Free via OpenRouter. Swap the model for any
+# free id (e.g. z-ai/glm-4.5-air:free) — see openrouter.ai/models?max_price=0.
 judge:
-  backend: anthropic
-  model: claude-sonnet-5
+  backend: openai
+  model: deepseek/deepseek-chat-v3-0324:free
 
 concurrency: 4
 cache_dir: .cache
