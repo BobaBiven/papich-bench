@@ -1,0 +1,62 @@
+# The Papich benchmark — one branching flow about "Arthas" in Dota 2.
+#
+# The flow gates each follow-up on the previous answer: if the model never
+# identifies the streamer, it stops; each next question is asked only if the
+# prior one was answered well enough (the router decides from the branches).
+
+questions:
+  - id: papich-bench
+    tags: [dota2, papich, streamer]
+    steps:
+      - id: who-is-arthas
+        prompt: Who is Arthas in Dota 2?
+        reference_answer: >-
+          In a Dota 2 context, "Arthas" most notably refers to the Ukrainian
+          streamer also known as Papich. The name is also used by a Chinese
+          professional Dota 2 player, and it is tied to the Dota 2 hero Abaddon
+          (an "Arthas" from the Warcraft III / DotA origins). Bonus: Omniknight
+          is another hero derived from a Warcraft III "Arthas"-style paladin.
+        wanted: >-
+          Must primarily identify the Ukrainian streamer Papich. A complete
+          answer also mentions the Chinese pro player and the hero Abaddon.
+          Mentioning Omniknight as the other Warcraft III "Arthas" form is a
+          bonus. If it names only the streamer with nothing else, it is NOT a
+          complete answer.
+        branches:
+          - if: The answer mentions the Ukrainian streamer known as Papich.
+            then: notable-facts
+          - if: The answer does not mention the Ukrainian streamer Papich at all.
+            then: stop
+
+      - id: notable-facts
+        prompt: Tell me some notable facts about him.
+        reference_answer: >-
+          Notable facts about the streamer Papich: known for casino / gambling
+          streams; currently lives in Dubai; and years ago was one of the
+          highest-ranked Dota 2 players.
+        wanted: >-
+          Gives real facts about the streamer — e.g. casino streams, living in
+          Dubai, being a former top-ranked Dota 2 player. A fully complete
+          answer covers several of these real facts (not invented ones).
+        branches:
+          - if: >-
+              The answer gives real notable facts about the streamer, such as
+              casino streams, living in Dubai, or being a former top-ranked
+              Dota 2 player.
+            then: old-dota-moments
+          - if: The answer gives no real notable facts about the streamer, or makes them up.
+            then: stop
+
+      - id: old-dota-moments
+        prompt: >-
+          Tell me about some of his notable old Dota moments, specifically the
+          Winter Wyvern one.
+        reference_answer: >-
+          His notable old Dota moments include a famous Winter Wyvern game
+          (associated with the Winter's Curse spell) and Wraith King moments.
+          Bonus references: the "Why you did this?" quote; catchphrases like
+          "НААА" or "VI KA"; and his Wraith King / Slark / Windranger / Luna games.
+        wanted: >-
+          Mentions the Winter Wyvern moment (ideally the Winter's Curse spell)
+          and Wraith King. Bonus for the "Why you did this?" quote, for "НААА"
+          or "VI KA", or for Wraith King / Slark / Windranger / Luna games.

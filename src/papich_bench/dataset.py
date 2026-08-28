@@ -8,8 +8,7 @@ either:
 * a **flow** (``id`` + ``steps``), where each step may declare ``branches`` for
   conditional follow-ups.
 
-See ``datasets/obscure.yaml`` (single questions) and ``datasets/flows.yaml``
-(branching) for examples.
+See ``datasets/papich.yaml`` for an example (a branching flow).
 """
 
 from __future__ import annotations

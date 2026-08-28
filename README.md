@@ -36,7 +36,7 @@ papich-bench validate
 papich-bench run
 
 # Run just one engine over a dataset, and also emit an HTML report
-papich-bench run --answerers tavily --dataset datasets/obscure.yaml --html report.html
+papich-bench run --answerers llm_direct --dataset datasets/papich.yaml --html report.html
 
 # Re-render a saved results file without spending any API budget
 papich-bench report results/20260828-120000.json --format html --out report.html
@@ -125,7 +125,7 @@ Anthropic effectively needs paid (or trial) API credit.
 ## Where questions, answers, and criteria live
 
 Your benchmark content lives in one place: a **dataset YAML** under `datasets/`
-(the default is `datasets/obscure.yaml`). Each item bundles the question, the
+(the default is `datasets/papich.yaml`). Each item bundles the question, the
 correct answer, and the grading criteria:
 
 ```yaml
@@ -140,8 +140,8 @@ correct answer, and the grading criteria:
   against this.
 - **Criteria for "did they find what I wanted"** → `wanted`. The judge scores
   *found* against this.
-- Keep **multiple datasets** (e.g. `datasets/history.yaml`) and pick one per run
-  with `--dataset datasets/history.yaml`.
+- Keep **multiple datasets** (e.g. `datasets/mytopic.yaml`) and pick one per run
+  with `--dataset datasets/mytopic.yaml`.
 - The **global grading rubric** (how strict the judge is, what the two scores
   mean) lives in the judge prompt: `src/papich_bench/judge.py` and the field
   descriptions in `src/papich_bench/models.py` (`Judgement`). Edit those to
@@ -159,7 +159,7 @@ Follow-ups see the earlier turns (conversation is carried by default —
 `carry_context: true`), so search engines and LLMs both handle them uniformly.
 
 ```yaml
-- id: amazon-flow
+- id: my-flow
   steps:
     - id: q1
       prompt: What was the first product sold on Amazon?
@@ -180,10 +180,10 @@ Follow-ups see the earlier turns (conversation is carried by default —
 
 Every step is still judged normally, so a flow's steps all count toward the
 leaderboard; the report shows each answerer's full transcript and which branch it
-took. A ready example lives in `datasets/flows.yaml`:
+took. The shipped `datasets/papich.yaml` is a real three-step flow you can run:
 
 ```bash
-papich-bench run --dataset datasets/flows.yaml
+papich-bench run --dataset datasets/papich.yaml
 ```
 
 Single questions and flows can be mixed in the same dataset file. Turn off

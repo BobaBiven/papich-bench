@@ -70,7 +70,7 @@ class AnswererSpec(BaseModel):
 class RunConfig(BaseModel):
     """Everything that defines a run, loaded from a YAML config file."""
 
-    dataset: str = "datasets/obscure.yaml"
+    dataset: str = "datasets/papich.yaml"
     answerers: list[AnswererSpec] = Field(default_factory=list)
     judge: LLMSpec = Field(default_factory=LLMSpec)
     concurrency: int = 4

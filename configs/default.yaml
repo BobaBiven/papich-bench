@@ -6,7 +6,7 @@
 # is unrelated — just browse that URL). Free models are heavily rate-limited, so
 # the run backs off/retries on 429 and uses low concurrency.
 
-dataset: datasets/obscure.yaml
+dataset: datasets/papich.yaml
 
 answerers:
   # Baseline: an LLM answering from memory, no web search. No search key.

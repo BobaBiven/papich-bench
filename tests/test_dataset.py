@@ -10,21 +10,19 @@ from papich_bench.config import ConfigError
 from papich_bench.dataset import load_dataset
 
 
-def test_loads_seed_dataset() -> None:
-    flows = load_dataset("datasets/obscure.yaml")
-    assert len(flows) >= 5
-    first = flows[0]
-    assert first.id
-    assert len(first.steps) == 1  # single questions load as one-step flows
-    assert first.steps[0].prompt
-    assert first.steps[0].reference_answer
+def test_loads_default_dataset() -> None:
+    flows = load_dataset("datasets/papich.yaml")
+    assert len(flows) == 1
+    flow = flows[0]
+    assert flow.id == "papich-bench"
+    assert [s.id for s in flow.steps] == ["who-is-arthas", "notable-facts", "old-dota-moments"]
+    assert flow.steps[0].reference_answer
 
 
 def test_loads_flow_with_branches() -> None:
-    flows = {f.id: f for f in load_dataset("datasets/flows.yaml")}
-    amazon = flows["amazon-flow"]
-    assert [s.id for s in amazon.steps] == ["q1", "q2"]
-    assert amazon.step("q1").branches[1].then == "q2"  # type: ignore[union-attr]
+    flow = load_dataset("datasets/papich.yaml")[0]
+    assert flow.step("who-is-arthas").branches[0].then == "notable-facts"  # type: ignore[union-attr]
+    assert flow.step("notable-facts").branches[1].then == "stop"  # type: ignore[union-attr]
 
 
 def test_missing_file_raises(tmp_path: Path) -> None:
