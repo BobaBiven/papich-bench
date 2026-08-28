@@ -1,0 +1,29 @@
+# Which questions to ask, who answers them, and who judges.
+#
+# `answerers` accepts either a bare name (uses defaults) or a
+# {name, options} mapping for per-answerer overrides. Comment out any
+# answerer whose API key you don't have — see .env.example.
+
+dataset: datasets/obscure.yaml
+
+answerers:
+  - tavily                       # search engine (free tier) — the default contestant
+  - name: llm_websearch          # an LLM that searches the web, as an agent
+    options:
+      model: claude-sonnet-5
+      max_uses: 5
+  # - perplexity                 # needs PERPLEXITY_API_KEY
+  # - name: google_serpapi       # needs SERPAPI_API_KEY (+ a summarizer LLM)
+  #   options:
+  #     summarizer_backend: anthropic
+  #     summarizer_model: claude-sonnet-5
+
+# The LLM that grades every answer. Swap backend to "openai" to use a free
+# OpenAI-compatible endpoint (Groq / Gemini / Ollama) via OPENAI_BASE_URL.
+judge:
+  backend: anthropic
+  model: claude-sonnet-5
+
+concurrency: 4
+cache_dir: .cache
+output_dir: results

@@ -1,0 +1,73 @@
+# Seed benchmark: obscure but verifiable questions.
+#
+# Each item needs:
+#   id                – a stable slug (used for caching and the report)
+#   prompt            – the question exactly as it should be asked
+#   reference_answer  – the known-correct answer; the judge grades truth vs. this
+#   wanted            – what "found what I wanted" means (the key fact(s))
+#   tags              – free-form labels for slicing results later
+#
+# Replace these with your own questions; keep the reference answers accurate.
+
+questions:
+  - id: amazon-first-sale
+    prompt: What was the very first product ever sold on Amazon.com, and to whom?
+    reference_answer: >-
+      The first product sold on Amazon (in April 1995) was a book: Douglas
+      Hofstadter's "Fluid Concepts and Creative Analogies: Computer Models of the
+      Fundamental Mechanisms of Thought." The buyer was a computer scientist
+      named John Wainwright.
+    wanted: The specific book title (Hofstadter's "Fluid Concepts and Creative Analogies").
+    tags: [tech-history, ecommerce]
+
+  - id: google-backrub
+    prompt: What was Google originally named before it was called Google?
+    reference_answer: >-
+      Google was originally called "BackRub," the name Larry Page and Sergey Brin
+      used for the project at Stanford in 1996, before renaming it Google in 1997.
+    wanted: The original name "BackRub".
+    tags: [tech-history]
+
+  - id: arpanet-first-message
+    prompt: What was the first message ever transmitted over ARPANET, and what happened?
+    reference_answer: >-
+      On 29 October 1969, a team at UCLA tried to send the word "LOGIN" to the
+      Stanford Research Institute. Only the first two letters, "LO," were
+      transmitted before the system crashed, making "LO" the first ARPANET message.
+    wanted: That they intended "LOGIN" but only "LO" got through before a crash.
+    tags: [computing-history, networking]
+
+  - id: hello-world-origin
+    prompt: Where did the "hello, world" program first appear in print?
+    reference_answer: >-
+      It first appeared in Brian Kernighan's 1972 Bell Labs tutorial "A Tutorial
+      Introduction to the Language B," and was later popularized by Kernighan and
+      Ritchie's 1978 book "The C Programming Language."
+    wanted: Kernighan's 1972 B-language tutorial (not just "K&R" / C).
+    tags: [programming, history]
+
+  - id: go-seki
+    prompt: >-
+      In the board game Go, what is the term for a position of mutual life where
+      neither player can capture the other's stones without dying first?
+    reference_answer: The term is "seki" (also called mutual life).
+    wanted: The single term "seki".
+    tags: [games, jargon]
+
+  - id: burkina-faso-flag
+    prompt: >-
+      The country whose capital is Ouagadougou has a flag of two horizontal
+      bands with a star. What country is it and what does its flag look like?
+    reference_answer: >-
+      The country is Burkina Faso. Its flag has two equal horizontal bands, red
+      on top and green on the bottom, with a yellow five-pointed star in the center.
+    wanted: Burkina Faso, plus red-over-green bands with a central yellow star.
+    tags: [geography, vexillology]
+
+  - id: challenger-deep
+    prompt: What is the deepest known point in Earth's oceans, and where is it?
+    reference_answer: >-
+      The deepest known point is the Challenger Deep, at the southern end of the
+      Mariana Trench in the western Pacific Ocean, roughly 10,900–11,000 metres deep.
+    wanted: "Challenger Deep, in the Mariana Trench."
+    tags: [geography, science]
