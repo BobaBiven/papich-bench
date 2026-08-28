@@ -3,6 +3,11 @@
 Everything that flows between the dataset, answerers, judge, runner, and report
 is a pydantic model defined here, so serialization to/from the results JSON and
 the on-disk cache is uniform and validated.
+
+A benchmark item is a **Flow**: one or more steps. A plain single question is
+just a one-step flow (the dataset loader builds it for you). Each step can carry
+**branches** — an LLM router picks which one the answer matches to decide the
+next step (or ``stop``), which is how conditional follow-up questions work.
 """
 
 from __future__ import annotations
@@ -10,12 +15,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Scores are on a small, explicit 0-2 scale so the judge's job is unambiguous.
 SCORE_MIN = 0
 SCORE_MAX = 2
 SCORE_LABELS = {0: "no", 1: "partial", 2: "yes"}
+
+STOP = "stop"  # the reserved "end the flow" target for a branch
 
 
 class Citation(BaseModel):
@@ -25,8 +32,20 @@ class Citation(BaseModel):
     title: str | None = None
 
 
-class Question(BaseModel):
-    """One benchmark item, authored by hand in the dataset YAML."""
+class Branch(BaseModel):
+    """A conditional edge out of a step: if the answer matches, go to ``then``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    condition: str = Field(
+        alias="if",
+        description="A natural-language description of the answer case, matched by the router LLM.",
+    )
+    then: str = Field(description="The next step id to ask, or 'stop' to end the flow.")
+
+
+class FlowStep(BaseModel):
+    """One question within a flow — the gradeable unit."""
 
     id: str
     prompt: str
@@ -35,10 +54,50 @@ class Question(BaseModel):
     )
     wanted: str = Field(
         default="",
-        description="What 'found what I wanted' means for this question — the key "
-        "fact(s) or resource the asker was really after.",
+        description="What 'found what I wanted' means for this step — the key fact(s) wanted.",
     )
+    branches: list[Branch] = Field(
+        default_factory=list,
+        description="Conditional next-steps. Empty means the flow stops after this step.",
+    )
+
+
+class Flow(BaseModel):
+    """A benchmark item: a start step plus optional branching follow-ups."""
+
+    id: str
+    steps: list[FlowStep]
+    start: str | None = Field(default=None, description="Start step id (defaults to the first).")
     tags: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_graph(self) -> Flow:
+        if not self.steps:
+            raise ValueError(f"flow {self.id!r} has no steps")
+        ids = [s.id for s in self.steps]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"flow {self.id!r} has duplicate step ids")
+        valid = set(ids) | {STOP}
+        for step in self.steps:
+            for branch in step.branches:
+                if branch.then not in valid:
+                    raise ValueError(
+                        f"flow {self.id!r} step {step.id!r} branches to unknown step "
+                        f"{branch.then!r}"
+                    )
+        if self.start is not None and self.start not in ids:
+            raise ValueError(f"flow {self.id!r} start {self.start!r} is not a step id")
+        return self
+
+    def step(self, step_id: str) -> FlowStep | None:
+        return next((s for s in self.steps if s.id == step_id), None)
+
+    def start_step(self) -> FlowStep:
+        if self.start is not None:
+            found = self.step(self.start)
+            if found is not None:
+                return found
+        return self.steps[0]
 
 
 class AnswerContent(BaseModel):
@@ -50,10 +109,10 @@ class AnswerContent(BaseModel):
 
 
 class Answer(BaseModel):
-    """A single answerer's response to a single question."""
+    """A single answerer's response to a single step."""
 
     answerer: str
-    question_id: str
+    step_id: str
     text: str = ""
     citations: list[Citation] = Field(default_factory=list)
     latency_s: float = 0.0
@@ -90,23 +149,33 @@ class Judgement(BaseModel):
         return self.found_score + self.truthful_score
 
 
-class JudgedAnswer(BaseModel):
-    """An answer paired with its judgement (None if judging failed/was skipped)."""
+class StepResult(BaseModel):
+    """One answered (and judged) step within a flow run."""
 
+    step_id: str
+    prompt: str
     answer: Answer
     judgement: Judgement | None = None
     judge_error: str | None = None
+    next: str = STOP  # the branch taken after this step
 
 
-class QuestionResult(BaseModel):
-    """All judged answers for one question."""
+class FlowRun(BaseModel):
+    """One answerer's walk through one flow."""
 
-    question: Question
-    answers: list[JudgedAnswer] = Field(default_factory=list)
+    answerer: str
+    steps: list[StepResult] = Field(default_factory=list)
+
+
+class FlowResult(BaseModel):
+    """All answerers' runs for one flow."""
+
+    flow: Flow
+    runs: list[FlowRun] = Field(default_factory=list)
 
 
 class LeaderboardRow(BaseModel):
-    """Aggregated scores for one answerer across the whole run."""
+    """Aggregated scores for one answerer across every step of the run."""
 
     answerer: str
     n: int
@@ -128,29 +197,36 @@ class RunReport(BaseModel):
     dataset: str
     judge_model: str
     answerers: list[str]
-    results: list[QuestionResult] = Field(default_factory=list)
+    results: list[FlowResult] = Field(default_factory=list)
 
     @field_validator("created_at")
     @classmethod
     def _tz_aware(cls, v: datetime) -> datetime:
         return v if v.tzinfo else v.replace(tzinfo=UTC)
 
+    def _steps_for(self, answerer: str) -> list[StepResult]:
+        return [
+            step
+            for fr in self.results
+            for run in fr.runs
+            if run.answerer == answerer
+            for step in run.steps
+        ]
+
     def leaderboard(self) -> list[LeaderboardRow]:
-        """Aggregate per-answerer scores, ranked best-first."""
+        """Aggregate per-answerer scores over every step, ranked best-first."""
         rows: list[LeaderboardRow] = []
         for name in self.answerers:
-            judged = [ja for qr in self.results for ja in qr.answers if ja.answer.answerer == name]
-            scored = [ja for ja in judged if ja.judgement is not None]
-            n_errors = sum(1 for ja in judged if not ja.answer.ok)
-            n = len(scored)
+            steps = self._steps_for(name)
+            scored = [s for s in steps if s.judgement is not None]
             rows.append(
                 LeaderboardRow(
                     answerer=name,
-                    n=n,
-                    n_errors=n_errors,
-                    mean_found=_mean(ja.judgement.found_score for ja in scored),  # type: ignore[union-attr]
-                    mean_truthful=_mean(ja.judgement.truthful_score for ja in scored),  # type: ignore[union-attr]
-                    mean_latency_s=_mean(ja.answer.latency_s for ja in judged),
+                    n=len(scored),
+                    n_errors=sum(1 for s in steps if not s.answer.ok),
+                    mean_found=_mean(s.judgement.found_score for s in scored),  # type: ignore[union-attr]
+                    mean_truthful=_mean(s.judgement.truthful_score for s in scored),  # type: ignore[union-attr]
+                    mean_latency_s=_mean(s.answer.latency_s for s in steps),
                 )
             )
         return sorted(rows, key=lambda r: r.score_pct, reverse=True)

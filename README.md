@@ -128,6 +128,46 @@ correct answer, and the grading criteria:
 
 Validate your dataset any time without spending anything: `papich-bench validate`.
 
+## Branching flows (conditional follow-up questions)
+
+An item can be a **flow** instead of a single question: ask Q1, and depending on
+the answer either stop or branch to a follow-up. Each step lists named
+`branches`; after the step is answered, an LLM **router** picks the branch whose
+`if` condition the answer matches and follows its `then` (a step id, or `stop`).
+Follow-ups see the earlier turns (conversation is carried by default —
+`carry_context: true`), so search engines and LLMs both handle them uniformly.
+
+```yaml
+- id: amazon-flow
+  steps:
+    - id: q1
+      prompt: What was the first product sold on Amazon?
+      reference_answer: A book by Douglas Hofstadter.
+      wanted: names the specific book
+      branches:
+        - if: the answer already names the exact book title
+          then: stop
+        - if: it says a book but not which title
+          then: q2            # ask the follow-up
+        - if: the answer is wrong
+          then: stop
+    - id: q2
+      prompt: It was a book — which exact title?
+      reference_answer: Fluid Concepts and Creative Analogies
+      wanted: the exact title
+```
+
+Every step is still judged normally, so a flow's steps all count toward the
+leaderboard; the report shows each answerer's full transcript and which branch it
+took. A ready example lives in `datasets/flows.yaml`:
+
+```bash
+papich-bench run --dataset datasets/flows.yaml
+```
+
+Single questions and flows can be mixed in the same dataset file. Turn off
+context-carrying (answer each step fresh) with `carry_context: false` in the config.
+
 ## Add a new answerer (search engine, LLM, or agent)
 
 Drop a module in `src/papich_bench/answerers/`, implement `_answer`, and register
@@ -155,24 +195,26 @@ class MyEngineAnswerer(Answerer):
 ```
 
 Then import it in `src/papich_bench/answerers/__init__.py`, add any secret to
-`config.Settings`, and reference `my_engine` in your config. `run(question)`,
-timing, error capture, and caching are handled for you by the base class.
+`config.Settings`, and reference `my_engine` in your config. Timing, error
+capture, conversation context, and caching are handled for you by the base class
+(it calls your `_answer` from `run(prompt, step_id)`).
 
 ## Layout
 
 ```
 src/papich_bench/
-  models.py       # pydantic types shared across the pipeline (Question, Answer, Judgement, …)
+  models.py       # pydantic types (Flow, FlowStep, Branch, Answer, Judgement, …)
   config.py       # Settings (env/secrets) + RunConfig (YAML)
   registry.py     # @register_answerer name -> class
-  dataset.py      # load/validate the questions YAML
+  dataset.py      # load/validate the dataset YAML (single questions + flows)
   cache.py        # on-disk JSON cache
   answerers/      # one file per contestant (llm_direct, duckduckgo, tavily,
                   #   google_cse, google_serpapi, perplexity, llm_websearch)
   llm/            # LLMClient interface + Anthropic and OpenAI-compatible backends
   judge.py        # LLM-as-judge (found + truthful rubric)
-  runner.py       # async orchestration with bounded concurrency + caching
-  report.py       # leaderboard + per-question Markdown/HTML
+  router.py       # LLM router that picks a flow's next branch
+  runner.py       # async flow orchestration with bounded concurrency + caching
+  report.py       # leaderboard + per-item transcripts (Markdown/HTML)
   cli.py          # `papich-bench` commands
 ```
 

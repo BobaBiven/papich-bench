@@ -1,4 +1,4 @@
-"""Render a ``RunReport`` as a leaderboard plus a per-question breakdown.
+"""Render a ``RunReport`` as a leaderboard plus per-flow transcripts.
 
 Two renderers share the same aggregation: ``to_markdown`` (stdout / files) and
 ``to_html`` (a standalone self-contained page). The Rich console leaderboard in
@@ -8,22 +8,22 @@ the CLI reuses ``RunReport.leaderboard`` directly.
 from __future__ import annotations
 
 import html
+from collections.abc import Callable
 
-from papich_bench.models import SCORE_LABELS, JudgedAnswer, QuestionResult, RunReport
+from papich_bench.models import SCORE_LABELS, FlowResult, RunReport, StepResult
 
 
-def _score_cell(ja: JudgedAnswer) -> str:
-    if not ja.answer.ok:
+def _score_cell(step: StepResult) -> str:
+    if not step.answer.ok:
         return "ERROR"
-    if ja.judgement is None:
+    if step.judgement is None:
         return "not judged"
-    j = ja.judgement
+    j = step.judgement
     return f"found={j.found_score} truthful={j.truthful_score}"
 
 
 def to_markdown(report: RunReport) -> str:
-    lines: list[str] = []
-    lines.append("# papich_bench results\n")
+    lines: list[str] = ["# papich_bench results\n"]
     lines.append(f"- **Dataset:** `{report.dataset}`")
     lines.append(f"- **Judge:** `{report.judge_model}`")
     lines.append(f"- **Answerers:** {', '.join(report.answerers)}")
@@ -40,34 +40,39 @@ def to_markdown(report: RunReport) -> str:
         )
     lines.append("")
 
-    lines.append("## Per-question breakdown\n")
-    for qr in report.results:
-        lines.extend(_question_markdown(qr))
+    lines.append("## Per-item breakdown\n")
+    for fr in report.results:
+        lines.extend(_flow_markdown(fr))
     return "\n".join(lines)
 
 
-def _question_markdown(qr: QuestionResult) -> list[str]:
-    q = qr.question
-    out = [f"### {q.id}: {q.prompt}\n"]
-    if q.wanted:
-        out.append(f"_Wanted:_ {q.wanted}\n")
-    out.append(f"_Reference:_ {q.reference_answer}\n")
-    for ja in qr.answers:
-        out.append(f"**{ja.answer.answerer}** — {_score_cell(ja)}")
-        if not ja.answer.ok:
-            out.append(f"> error: {ja.answer.error}\n")
-            continue
-        answer_text = ja.answer.text.strip() or "(empty answer)"
-        out.append(f"> {answer_text}\n")
-        if ja.judgement is not None:
-            j = ja.judgement
-            out.append(
-                f"> _found ({SCORE_LABELS[j.found_score]}):_ {j.found_reasoning}  "
-                f"_truthful ({SCORE_LABELS[j.truthful_score]}):_ {j.truthful_reasoning}\n"
-            )
-        elif ja.judge_error:
-            out.append(f"> _judge error:_ {ja.judge_error}\n")
-    out.append("")
+def _flow_markdown(fr: FlowResult) -> list[str]:
+    multi = len(fr.flow.steps) > 1
+    heading = f"### {fr.flow.id}" + ("  _(flow)_" if multi else f": {fr.flow.steps[0].prompt}")
+    out = [heading + "\n"]
+    for run in fr.runs:
+        out.append(f"**{run.answerer}**")
+        for step in run.steps:
+            label = f"`{step.step_id}` " if multi else ""
+            if multi:
+                out.append(f"> {label}Q: {step.prompt}")
+            out.append(f"> {label}— {_score_cell(step)}")
+            if not step.answer.ok:
+                out.append(f"> error: {step.answer.error}\n")
+                continue
+            out.append(f"> {step.answer.text.strip() or '(empty answer)'}")
+            if step.judgement is not None:
+                j = step.judgement
+                out.append(
+                    f"> _found ({SCORE_LABELS[j.found_score]}):_ {j.found_reasoning}  "
+                    f"_truthful ({SCORE_LABELS[j.truthful_score]}):_ {j.truthful_reasoning}"
+                )
+            elif step.judge_error:
+                out.append(f"> _judge error:_ {step.judge_error}")
+            if multi:
+                out.append(f"> _→ next: {step.next}_")
+            out.append("")
+        out.append("")
     return out
 
 
@@ -84,38 +89,42 @@ def to_html(report: RunReport) -> str:
         f"<td class='num'>{r.mean_latency_s:.1f}s</td></tr>"
         for rank, r in enumerate(report.leaderboard(), start=1)
     )
-
-    questions = "\n".join(_question_html(qr, esc) for qr in report.results)
-
+    flows = "\n".join(_flow_html(fr, esc) for fr in report.results)
     return _HTML_TEMPLATE.format(
         dataset=esc(report.dataset),
         judge=esc(report.judge_model),
         answerers=esc(", ".join(report.answerers)),
         created=esc(report.created_at.isoformat(timespec="seconds")),
         rows=rows,
-        questions=questions,
+        flows=flows,
     )
 
 
-def _question_html(qr: QuestionResult, esc) -> str:  # type: ignore[no-untyped-def]
-    q = qr.question
-    parts = [f"<div class='q'><h3>{esc(q.id)}: {esc(q.prompt)}</h3>"]
-    if q.wanted:
-        parts.append(f"<p class='meta'><em>Wanted:</em> {esc(q.wanted)}</p>")
-    parts.append(f"<p class='meta'><em>Reference:</em> {esc(q.reference_answer)}</p>")
-    for ja in qr.answers:
-        name = esc(ja.answer.answerer)
-        parts.append(f"<div class='ans'><strong>{name}</strong> — {_score_cell(ja)}")
-        if not ja.answer.ok:
-            parts.append(f"<p class='err'>{esc(ja.answer.error or '')}</p></div>")
-            continue
-        parts.append(f"<blockquote>{esc(ja.answer.text.strip() or '(empty)')}</blockquote>")
-        if ja.judgement is not None:
-            j = ja.judgement
-            parts.append(
-                f"<p class='judge'><em>found:</em> {esc(j.found_reasoning)}<br>"
-                f"<em>truthful:</em> {esc(j.truthful_reasoning)}</p>"
-            )
+def _flow_html(fr: FlowResult, esc: Callable[[str], str]) -> str:
+    multi = len(fr.flow.steps) > 1
+    if multi:
+        title = f"{esc(fr.flow.id)} (flow)"
+    else:
+        title = f"{esc(fr.flow.id)}: {esc(fr.flow.steps[0].prompt)}"
+    parts = [f"<div class='q'><h3>{title}</h3>"]
+    for run in fr.runs:
+        parts.append(f"<div class='ans'><strong>{esc(run.answerer)}</strong>")
+        for step in run.steps:
+            if multi:
+                parts.append(f"<p class='meta'>Q ({esc(step.step_id)}): {esc(step.prompt)}</p>")
+            parts.append(f"<p class='score'>{_score_cell(step)}</p>")
+            if not step.answer.ok:
+                parts.append(f"<p class='err'>{esc(step.answer.error or '')}</p>")
+                continue
+            parts.append(f"<blockquote>{esc(step.answer.text.strip() or '(empty)')}</blockquote>")
+            if step.judgement is not None:
+                j = step.judgement
+                parts.append(
+                    f"<p class='judge'><em>found:</em> {esc(j.found_reasoning)}<br>"
+                    f"<em>truthful:</em> {esc(j.truthful_reasoning)}</p>"
+                )
+            if multi:
+                parts.append(f"<p class='meta'>→ next: {esc(step.next)}</p>")
         parts.append("</div>")
     parts.append("</div>")
     return "\n".join(parts)
@@ -140,6 +149,7 @@ _HTML_TEMPLATE = """<!doctype html>
   blockquote {{ margin: .4rem 0; padding: .4rem .8rem; border-left: 3px solid #ccc;
                 background: #fafafa; }}
   .judge {{ color: #444; font-size: .9em; }}
+  .score {{ color: #333; font-size: .9em; font-weight: 600; margin: .2rem 0; }}
   .err {{ color: #b00020; }}
   .meta {{ color: #666; margin: .2rem 0; }}
 </style></head><body>
@@ -154,7 +164,7 @@ _HTML_TEMPLATE = """<!doctype html>
 <th>Errors</th><th>Latency</th></tr>
 {rows}
 </table>
-<h2>Per-question breakdown</h2>
-{questions}
+<h2>Per-item breakdown</h2>
+{flows}
 </body></html>
 """

@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from pydantic import BaseModel
 
 from papich_bench.answerers.base import Answerer
 from papich_bench.config import Settings
@@ -43,20 +42,27 @@ class BoomAnswerer(Answerer):
 
 
 class FakeLLM(LLMClient):
-    """Returns a fixed payload validated against whatever schema is requested."""
+    """Returns a fixed payload validated against whatever schema is requested.
 
-    def __init__(self, payload: dict[str, Any], model: str = "fake-model") -> None:
+    ``by_schema`` (keyed on the schema class name) lets one fake serve different
+    payloads to the judge (``Judgement``) and the router (``RouterDecision``).
+    """
+
+    def __init__(
+        self,
+        payload: dict[str, Any],
+        model: str = "fake-model",
+        by_schema: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
         self.model = model
         self._payload = payload
+        self._by_schema = by_schema or {}
         self.calls = 0
 
     async def structured(self, *, system: str, prompt: str, schema: type[SchemaT]) -> SchemaT:
         self.calls += 1
-        return schema.model_validate(self._payload)
-
-
-class Echo(BaseModel):
-    answer: str
+        payload = self._by_schema.get(schema.__name__, self._payload)
+        return schema.model_validate(payload)
 
 
 @pytest.fixture

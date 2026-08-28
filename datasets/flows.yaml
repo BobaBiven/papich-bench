@@ -1,0 +1,53 @@
+# Example branching flows.
+#
+# A flow item has an `id` and a list of `steps`. Each step is a normal question
+# (prompt / reference_answer / wanted) plus optional `branches`. After a step is
+# answered, an LLM router picks the branch whose `if` condition the answer best
+# matches and follows its `then` (a step id, or `stop`). The follow-up sees the
+# earlier turns (carry_context: true, the default).
+#
+# Run it with:  papich-bench run --dataset datasets/flows.yaml
+
+questions:
+  - id: amazon-flow
+    tags: [tech-history, branching]
+    steps:
+      - id: q1
+        prompt: What was the very first product ever sold on Amazon.com?
+        reference_answer: >-
+          A book — Douglas Hofstadter's "Fluid Concepts and Creative Analogies."
+        wanted: Names the specific book (Hofstadter's "Fluid Concepts and Creative Analogies").
+        branches:
+          - if: The answer already names the specific book title.
+            then: stop
+          - if: The answer says it was a book but does not name the exact title.
+            then: q2
+          - if: The answer is wrong or does not mention a book at all.
+            then: stop
+      - id: q2
+        prompt: It was a book — which exact title was it?
+        reference_answer: '"Fluid Concepts and Creative Analogies" by Douglas Hofstadter.'
+        wanted: The exact title, "Fluid Concepts and Creative Analogies."
+
+  - id: everest-flow
+    tags: [geography, branching]
+    steps:
+      - id: q1
+        prompt: Who was the first person confirmed to summit Mount Everest?
+        reference_answer: >-
+          Edmund Hillary and Tenzing Norgay reached the summit together on 29 May 1953;
+          it is not attributed to a single "first person."
+        wanted: Recognizes it was Hillary AND Tenzing together (not one person).
+        branches:
+          - if: The answer names both Edmund Hillary and Tenzing Norgay.
+            then: stop
+          - if: The answer names only one of the two climbers.
+            then: q2
+          - if: The answer is wrong or names someone else.
+            then: stop
+      - id: q2
+        prompt: Actually two climbers reached the top together — who was the other one?
+        reference_answer: >-
+          The pair were Edmund Hillary and Tenzing Norgay; whichever you did not
+          name, the other is the answer.
+        wanted: Names the second climber (Tenzing Norgay or Edmund Hillary).

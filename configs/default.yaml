@@ -26,11 +26,11 @@ answerers:
   # - name: llm_websearch        # Claude native web search — paid Anthropic API
   #   options: { model: claude-sonnet-5 }
 
-# The LLM that grades every answer. Free via OpenRouter. Tip: use a DIFFERENT
-# model here than any llm_direct contestant to avoid self-preference bias.
+# The LLM that grades every answer. Free via OpenRouter. Using GLM here while the
+# llm_direct contestant runs DeepSeek also avoids self-preference bias.
 judge:
   backend: openai
-  model: deepseek/deepseek-chat-v3-0324:free
+  model: z-ai/glm-5.2:free
 
 concurrency: 4
 cache_dir: .cache

@@ -5,20 +5,15 @@ from __future__ import annotations
 from papich_bench.answerers._search_base import SearchResult
 from papich_bench.answerers.duckduckgo import DuckDuckGoAnswerer
 from papich_bench.answerers.llm_direct import LLMDirectAnswerer
-from papich_bench.models import Question
 
 from .conftest import FakeLLM
-
-
-def _question() -> Question:
-    return Question(id="q", prompt="capital of Testland?", reference_answer="Testville")
 
 
 async def test_llm_direct_answers_via_llm() -> None:
     llm = FakeLLM({"answer": "It is Testville."})
     answerer = LLMDirectAnswerer(llm)
 
-    answer = await answerer.run(_question())
+    answer = await answerer.run("capital of Testland?", "q")
 
     assert answer.ok
     assert answer.text == "It is Testville."
@@ -32,7 +27,7 @@ async def test_llm_direct_reports_llm_failure() -> None:
             raise RuntimeError("model down")
 
     answerer = LLMDirectAnswerer(Boom({}))
-    answer = await answerer.run(_question())
+    answer = await answerer.run("capital?", "q")
 
     assert not answer.ok
     assert "model down" in (answer.error or "")
@@ -47,7 +42,7 @@ async def test_summarizing_search_answerer(monkeypatch) -> None:  # type: ignore
         return [SearchResult(url="https://a.example", title="A", snippet="capital is Testville")]
 
     monkeypatch.setattr(answerer, "_search", fake_search)
-    answer = await answerer.run(_question())
+    answer = await answerer.run("capital of Testland?", "q")
 
     assert answer.ok
     assert answer.text == "Testville is the capital."

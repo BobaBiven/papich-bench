@@ -83,12 +83,13 @@ def validate(
 ) -> None:
     """Validate a config + its dataset without making any API calls."""
     cfg = _load_config(config, None, None)
-    questions = load_dataset(cfg.dataset)
+    flows = load_dataset(cfg.dataset)
     for spec in cfg.answerers:
         if spec.name not in available_answerers():
             raise typer.BadParameter(f"unknown answerer: {spec.name}")
+    n_steps = sum(len(f.steps) for f in flows)
     console.print(
-        f"[green]OK[/green] — {len(questions)} questions, "
+        f"[green]OK[/green] — {len(flows)} items ({n_steps} steps), "
         f"{len(cfg.answerers)} answerers, judge={cfg.judge.backend}:{cfg.judge.model}"
     )
 

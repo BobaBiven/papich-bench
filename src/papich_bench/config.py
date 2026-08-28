@@ -74,6 +74,7 @@ class RunConfig(BaseModel):
     answerers: list[AnswererSpec] = Field(default_factory=list)
     judge: LLMSpec = Field(default_factory=LLMSpec)
     concurrency: int = 4
+    carry_context: bool = True  # in flows, follow-ups see prior turns
     cache_dir: str = ".cache"
     output_dir: str = "results"
 

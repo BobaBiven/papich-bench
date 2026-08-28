@@ -1,14 +1,14 @@
 """LLM-as-judge: score one answer on found-it and truthfulness.
 
-The judge sees the question, what the asker wanted, the hand-written reference
-answer, and a candidate answer, and returns a structured ``Judgement``. The
-``Judgement`` schema's field descriptions (in ``models.py``) are the rubric.
+The judge sees the step's question, what the asker wanted, the hand-written
+reference answer, and a candidate answer, and returns a structured ``Judgement``.
+The ``Judgement`` schema's field descriptions (in ``models.py``) are the rubric.
 """
 
 from __future__ import annotations
 
 from papich_bench.llm.base import LLMClient
-from papich_bench.models import Answer, Judgement, Question
+from papich_bench.models import Answer, FlowStep, Judgement
 
 JUDGE_SYSTEM = (
     "You are a rigorous, impartial benchmark judge. You grade a candidate answer "
@@ -22,13 +22,13 @@ JUDGE_SYSTEM = (
 )
 
 
-def _build_prompt(question: Question, answer: Answer) -> str:
-    wanted = question.wanted or "(not specified — infer from the question)"
+def _build_prompt(step: FlowStep, answer: Answer) -> str:
+    wanted = step.wanted or "(not specified — infer from the question)"
     candidate = answer.text.strip() or "(the answerer returned no answer)"
     return (
-        f"QUESTION:\n{question.prompt}\n\n"
+        f"QUESTION:\n{step.prompt}\n\n"
         f"WHAT THE ASKER WANTED:\n{wanted}\n\n"
-        f"REFERENCE ANSWER (ground truth):\n{question.reference_answer}\n\n"
+        f"REFERENCE ANSWER (ground truth):\n{step.reference_answer}\n\n"
         f"CANDIDATE ANSWER (from '{answer.answerer}'):\n{candidate}\n\n"
         "Grade the candidate answer now."
     )
@@ -44,12 +44,9 @@ class Judge:
     def model(self) -> str:
         return self._llm.model
 
-    async def judge(self, question: Question, answer: Answer) -> Judgement:
+    async def judge(self, step: FlowStep, answer: Answer) -> Judgement:
         return await self._llm.structured(
             system=JUDGE_SYSTEM,
-            prompt=_build_prompt(question, answer),
+            prompt=_build_prompt(step, answer),
             schema=Judgement,
         )
-
-    async def aclose(self) -> None:
-        await self._llm.aclose()
