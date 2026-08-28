@@ -17,6 +17,11 @@ import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# A free OpenRouter model, used as the default wherever an LLM is needed at
+# zero cost (the judge, `llm_direct`, and search summarizers). Browse current
+# free ids at https://openrouter.ai/models?max_price=0.
+DEFAULT_FREE_MODEL = "deepseek/deepseek-chat-v3-0324:free"
+
 
 class Settings(BaseSettings):
     """Secrets and endpoints, resolved from environment variables / ``.env``."""
@@ -31,6 +36,10 @@ class Settings(BaseSettings):
     tavily_api_key: str | None = None
     perplexity_api_key: str | None = None
     serpapi_api_key: str | None = None
+
+    # Google Programmable Search (Custom Search JSON API) — free, 100 queries/day.
+    google_api_key: str | None = None
+    google_cse_id: str | None = None
 
     def require(self, attr: str, *, needed_by: str) -> str:
         """Return a secret or raise a clear, actionable error if it's unset."""

@@ -1,8 +1,8 @@
-# Zero-cost defaults.
+# Zero-cost defaults — needs only ONE free signup (OpenRouter).
 #
-# Judge + the `llm_direct` contestant both run on a FREE OpenRouter model
-# (DeepSeek here). The only extra you need for the second contestant (`tavily`)
-# is a free Tavily key — comment it out for a run that needs just one signup.
+# Both contestants and the judge run for free: `duckduckgo` needs no search key,
+# and everything LLM-shaped uses a free OpenRouter model. Get a key at
+# https://openrouter.ai/keys and set OPENAI_API_KEY in .env.
 #
 # `answerers` accepts either a bare name (uses its defaults) or a
 # {name, options} mapping for per-answerer overrides.
@@ -10,27 +10,24 @@
 dataset: datasets/obscure.yaml
 
 answerers:
-  # Baseline: an LLM answering from memory, no web search. Needs no search key —
-  # runs entirely on the free OpenRouter model. This is the "does search even
-  # beat a plain LLM?" contestant.
+  # Baseline: an LLM answering from memory, no web search. No search key.
   - name: llm_direct
-    options:
-      backend: openai
-      model: deepseek/deepseek-chat-v3-0324:free
+    options: { backend: openai, model: deepseek/deepseek-chat-v3-0324:free }
 
-  # A real search engine (free tier). Needs TAVILY_API_KEY — comment out to run
-  # with only the OpenRouter signup.
-  - tavily
+  # A real search engine with NO API key, summarized by the free model.
+  - name: duckduckgo
+    options: { summarizer_backend: openai, summarizer_model: deepseek/deepseek-chat-v3-0324:free }
 
-  # --- Paid / optional, left off by default -------------------------------
-  # - perplexity                 # needs PERPLEXITY_API_KEY (paid)
-  # - name: llm_websearch        # Claude native web search — needs a paid Anthropic key
-  #   options: { model: claude-sonnet-5 }
-  # - name: google_serpapi       # SerpAPI free tier + a summarizer LLM
+  # --- Other engines: uncomment and add the matching key(s) in .env ---------
+  # - tavily                     # free tier — needs TAVILY_API_KEY
+  # - name: google_cse           # free Google (100/day) — needs GOOGLE_API_KEY + GOOGLE_CSE_ID
   #   options: { summarizer_backend: openai, summarizer_model: deepseek/deepseek-chat-v3-0324:free }
+  # - perplexity                 # paid API (free with Perplexity Pro credits)
+  # - name: llm_websearch        # Claude native web search — paid Anthropic API
+  #   options: { model: claude-sonnet-5 }
 
-# The LLM that grades every answer. Free via OpenRouter. Swap the model for any
-# free id (e.g. z-ai/glm-4.5-air:free) — see openrouter.ai/models?max_price=0.
+# The LLM that grades every answer. Free via OpenRouter. Tip: use a DIFFERENT
+# model here than any llm_direct contestant to avoid self-preference bias.
 judge:
   backend: openai
   model: deepseek/deepseek-chat-v3-0324:free

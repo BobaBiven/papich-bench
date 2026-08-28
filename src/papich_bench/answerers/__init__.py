@@ -8,6 +8,8 @@ Add a new engine by dropping a module here and importing it below.
 from __future__ import annotations
 
 from papich_bench.answerers import (  # noqa: F401 - imported for side effects
+    duckduckgo,
+    google_cse,
     google_serpapi,
     llm_direct,
     llm_websearch,

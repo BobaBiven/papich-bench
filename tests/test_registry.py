@@ -11,7 +11,15 @@ from papich_bench.registry import available_answerers, get_answerer, register_an
 
 def test_builtins_registered() -> None:
     names = available_answerers()
-    for expected in ("tavily", "perplexity", "google_serpapi", "llm_websearch", "llm_direct"):
+    for expected in (
+        "tavily",
+        "perplexity",
+        "google_serpapi",
+        "google_cse",
+        "duckduckgo",
+        "llm_websearch",
+        "llm_direct",
+    ):
         assert expected in names
 
 

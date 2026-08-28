@@ -50,26 +50,20 @@ Each run writes a full `results/<timestamp>.json` and prints a leaderboard:
 ```
         Leaderboard
  #  Answerer     Score  Found  Truthful  Errors  Latency
- 1  tavily         71%   1.57      1.29       0     1.1s
+ 1  duckduckgo     71%   1.57      1.29       0     1.8s
  2  llm_direct     54%   1.14      1.00       0     2.3s
 ```
 
 ## Zero-cost quickstart
 
-The defaults cost **nothing**. Both the judge and the `llm_direct` contestant run
-on a free [OpenRouter](https://openrouter.ai) model (DeepSeek).
+The defaults cost **nothing** and need exactly **one free signup**. The judge and
+the `llm_direct` baseline run on a free [OpenRouter](https://openrouter.ai) model,
+and the `duckduckgo` search contestant needs no key at all.
 
 1. Get a free key at <https://openrouter.ai/keys>.
-2. In `.env`, set `OPENAI_API_KEY=<your OpenRouter key>` (the base URL already
-   defaults to OpenRouter).
-3. Smallest possible run — one signup, no search key, just the LLM baseline:
-
-   ```bash
-   papich-bench run --answerers llm_direct
-   ```
-
-4. To also compare a real search engine, get a free [Tavily](https://app.tavily.com)
-   key, add `TAVILY_API_KEY` to `.env`, and run the full default config:
+2. `cp .env.example .env`, then set `OPENAI_API_KEY=<your OpenRouter key>` (the
+   base URL already defaults to OpenRouter).
+3. Run the default config — a plain LLM vs. a real search engine, judged for free:
 
    ```bash
    papich-bench run --html report.html
@@ -78,31 +72,61 @@ on a free [OpenRouter](https://openrouter.ai) model (DeepSeek).
 Swap the free model for any other zero-price id (e.g. `z-ai/glm-4.5-air:free`) in
 `configs/default.yaml`; browse them at <https://openrouter.ai/models?max_price=0>.
 
+## Can I use Anthropic / Perplexity / Google for free?
+
+For low volume, mostly yes — the trick is which door you use:
+
+| Provider | Free path | In this project |
+| --- | --- | --- |
+| **Google (search)** | **Custom Search JSON API** = 100 queries/day free (needs a free API key + a Programmable Search Engine id). | `google_cse` answerer — set `GOOGLE_API_KEY` + `GOOGLE_CSE_ID`. |
+| **Google (LLM)** | Gemini API free tier, via its OpenAI-compatible endpoint. | `openai` backend with `OPENAI_BASE_URL=…/v1beta/openai`. |
+| **DuckDuckGo** | No key, ever. | `duckduckgo` answerer (default). |
+| **Perplexity** | No free API tier — **but Perplexity Pro** includes **$5/month** of API credits, enough for small runs. | `perplexity` answerer with your `PERPLEXITY_API_KEY`. |
+| **Anthropic (Claude)** | No standing free tier; new API accounts sometimes get a small trial credit. Your Claude.ai / Claude Code **subscription is not usable as an API key.** | `llm_websearch` / `anthropic` judge with `ANTHROPIC_API_KEY`. |
+
+So: DuckDuckGo and OpenRouter/Gemini/Groq/Ollama are truly free; Google search is
+free at 100/day; Perplexity is free only via a Pro subscription's credits; and
+Anthropic effectively needs paid (or trial) API credit.
+
 ## Keeping it free — the knobs
 
 - **Judge & LLM answerers:** the `openai` backend points at `OPENAI_BASE_URL`.
-  Free options: **OpenRouter** `:free` models (default), **Groq**'s free tier, or
-  a fully-local **Ollama** (`http://localhost:11434/v1`, no key needed).
-- **`llm_direct`:** an LLM answering from memory — no search key, so it's free
-  on the same OpenRouter model. Also a useful baseline: does search beat a plain LLM?
-- **Search:** `tavily` and `google_serpapi` (SerpAPI) both have free tiers.
-  `perplexity` and `llm_websearch` (Claude) are **paid** and off by default.
+  Free options: **OpenRouter** `:free` models (default), **Groq**'s free tier,
+  **Gemini**'s free tier, or a fully-local **Ollama** (`http://localhost:11434/v1`, no key).
+- **`duckduckgo`:** a real search engine with **no key** — free with just the
+  OpenRouter signup (used to summarize the results).
+- **`llm_direct`:** an LLM answering from memory — no search key. A useful
+  baseline: does search actually beat a plain LLM on obscure questions?
+- **`google_cse`:** free Google results (100/day). `tavily` has a free tier too.
 - **Caching:** every answer and judgement is cached under `.cache/`, so re-runs
   and report tweaks cost nothing. Use `--no-cache` to force a fresh run.
 
-## Add your own questions
+## Where questions, answers, and criteria live
 
-Edit `datasets/obscure.yaml` — each item is a question, a **reference answer**
-(the ground truth the judge grades against), and a `wanted` note describing what
-"found it" means:
+Your benchmark content lives in one place: a **dataset YAML** under `datasets/`
+(the default is `datasets/obscure.yaml`). Each item bundles the question, the
+correct answer, and the grading criteria:
 
 ```yaml
-- id: my-question
+- id: my-question                       # stable slug (used for caching + report)
   prompt: What obscure thing do you want to know?
-  reference_answer: The known-correct answer.
-  wanted: The single key fact that counts as "found it".
-  tags: [whatever]
+  reference_answer: The known-correct answer — the "truth" the judge checks against.
+  wanted: The single key fact that counts as "found it" (the found-it criterion).
+  tags: [whatever]                      # optional labels for slicing results
 ```
+
+- **Answers / ground truth** → `reference_answer`. The judge scores *truthful*
+  against this.
+- **Criteria for "did they find what I wanted"** → `wanted`. The judge scores
+  *found* against this.
+- Keep **multiple datasets** (e.g. `datasets/history.yaml`) and pick one per run
+  with `--dataset datasets/history.yaml`.
+- The **global grading rubric** (how strict the judge is, what the two scores
+  mean) lives in the judge prompt: `src/papich_bench/judge.py` and the field
+  descriptions in `src/papich_bench/models.py` (`Judgement`). Edit those to
+  change judging behavior for *every* question at once.
+
+Validate your dataset any time without spending anything: `papich-bench validate`.
 
 ## Add a new answerer (search engine, LLM, or agent)
 
@@ -143,7 +167,8 @@ src/papich_bench/
   registry.py     # @register_answerer name -> class
   dataset.py      # load/validate the questions YAML
   cache.py        # on-disk JSON cache
-  answerers/      # one file per contestant (llm_direct, tavily, perplexity, google_serpapi, llm_websearch)
+  answerers/      # one file per contestant (llm_direct, duckduckgo, tavily,
+                  #   google_cse, google_serpapi, perplexity, llm_websearch)
   llm/            # LLMClient interface + Anthropic and OpenAI-compatible backends
   judge.py        # LLM-as-judge (found + truthful rubric)
   runner.py       # async orchestration with bounded concurrency + caching

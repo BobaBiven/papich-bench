@@ -13,7 +13,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from papich_bench.answerers.base import Answerer
-from papich_bench.config import LLMSpec, Settings
+from papich_bench.config import DEFAULT_FREE_MODEL, LLMSpec, Settings
 from papich_bench.llm import build_llm
 from papich_bench.llm.base import LLMClient
 from papich_bench.models import AnswerContent
@@ -39,7 +39,7 @@ class LLMDirectAnswerer(Answerer):
     def from_settings(cls, settings: Settings, options: dict[str, Any]) -> LLMDirectAnswerer:
         spec = LLMSpec(
             backend=str(options.get("backend", "openai")),
-            model=str(options.get("model", "deepseek/deepseek-chat-v3-0324:free")),
+            model=str(options.get("model", DEFAULT_FREE_MODEL)),
         )
         return cls(build_llm(spec, settings))
 
