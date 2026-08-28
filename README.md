@@ -1,6 +1,8 @@
-# papich_bench
+# papich-bench
 
 A small, pluggable benchmark for **search engines, LLMs, and web-search agents**.
+(The Python package is imported as `papich_bench` — hyphens aren't valid in
+import names.)
 Ask a set of obscure questions, let any number of "answerers" respond, and have
 an LLM judge score each answer on two axes:
 

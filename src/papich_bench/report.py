@@ -23,7 +23,7 @@ def _score_cell(step: StepResult) -> str:
 
 
 def to_markdown(report: RunReport) -> str:
-    lines: list[str] = ["# papich_bench results\n"]
+    lines: list[str] = ["# papich-bench results\n"]
     lines.append(f"- **Dataset:** `{report.dataset}`")
     lines.append(f"- **Judge:** `{report.judge_model}`")
     lines.append(f"- **Answerers:** {', '.join(report.answerers)}")
@@ -136,7 +136,7 @@ def _flow_html(fr: FlowResult, esc: Callable[[str], str]) -> str:
 _HTML_TEMPLATE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>papich_bench results</title>
+<title>papich-bench results</title>
 <style>
   body {{ font: 15px/1.5 -apple-system, system-ui, sans-serif; max-width: 900px;
          margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }}
@@ -156,7 +156,7 @@ _HTML_TEMPLATE = """<!doctype html>
   .err {{ color: #b00020; }}
   .meta {{ color: #666; margin: .2rem 0; }}
 </style></head><body>
-<h1>papich_bench results</h1>
+<h1>papich-bench results</h1>
 <div class="meta-block">
   Dataset <code>{dataset}</code> &middot; Judge <code>{judge}</code> &middot;
   {answerers} &middot; {created}

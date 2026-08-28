@@ -67,7 +67,7 @@ def report(
         out.write_text(rendered, encoding="utf-8")
         console.print(f"Wrote [cyan]{out}[/cyan]")
     else:
-        console.print(rendered if fmt == "html" else _md_to_console(loaded))
+        console.print(rendered)
 
 
 @app.command("list-answerers")
@@ -148,11 +148,6 @@ def _print_leaderboard(report: RunReport) -> None:
             "(judge rate-limited or errored) — scores above average only the judged steps. "
             "Re-run to fill them in from cache, or see the free-tier note in the README."
         )
-
-
-def _md_to_console(report: RunReport) -> str:
-    # Markdown reads fine as plain text in a terminal.
-    return to_markdown(report)
 
 
 def main() -> None:

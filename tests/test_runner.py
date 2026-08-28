@@ -92,7 +92,7 @@ async def test_report_renders(tmp_path: Path) -> None:
 
     html = to_html(report)
     assert "<table>" in html
-    assert "papich_bench results" in html
+    assert "papich-bench results" in html
 
     # Round-trips through JSON like the CLI's `report` command.
     restored = RunReport.model_validate_json(report.model_dump_json())

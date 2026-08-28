@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "papich_bench"
+name = "papich-bench"
 version = "0.1.0"
 description = "A pluggable benchmark that rates search engines, LLMs, and agents on obscure questions."
 readme = "README.md"
@@ -41,8 +41,8 @@ dev = [
 papich-bench = "papich_bench.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/BobaBiven/papich_bench"
-Repository = "https://github.com/BobaBiven/papich_bench"
+Homepage = "https://github.com/BobaBiven/papich-bench"
+Repository = "https://github.com/BobaBiven/papich-bench"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/papich_bench"]
