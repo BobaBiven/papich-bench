@@ -122,21 +122,32 @@ def _print_leaderboard(report: RunReport) -> None:
     table.add_column("#", justify="right")
     table.add_column("Answerer")
     table.add_column("Score", justify="right")
+    table.add_column("Judged", justify="right")
     table.add_column("Found", justify="right")
     table.add_column("Truthful", justify="right")
     table.add_column("Errors", justify="right")
     table.add_column("Latency", justify="right")
-    for rank, row in enumerate(report.leaderboard(), start=1):
+    rows = report.leaderboard()
+    for rank, row in enumerate(rows, start=1):
         table.add_row(
             str(rank),
             row.answerer,
             f"{row.score_pct:.0f}%",
+            f"{row.n}/{row.n_total}",
             f"{row.mean_found:.2f}",
             f"{row.mean_truthful:.2f}",
             str(row.n_errors),
             f"{row.mean_latency_s:.1f}s",
         )
     console.print(table)
+
+    unjudged = sum(r.n_unjudged for r in rows)
+    if unjudged:
+        console.print(
+            f"[yellow]⚠ {unjudged} answered step(s) were not judged[/yellow] "
+            "(judge rate-limited or errored) — scores above average only the judged steps. "
+            "Re-run to fill them in from cache, or see the free-tier note in the README."
+        )
 
 
 def _md_to_console(report: RunReport) -> str:

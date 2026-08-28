@@ -30,11 +30,13 @@ def to_markdown(report: RunReport) -> str:
     lines.append(f"- **Run at:** {report.created_at.isoformat(timespec='seconds')}\n")
 
     lines.append("## Leaderboard\n")
-    lines.append("| Rank | Answerer | Score | Found (avg) | Truthful (avg) | Errors | Latency |")
-    lines.append("| ---: | --- | ---: | ---: | ---: | ---: | ---: |")
+    lines.append(
+        "| Rank | Answerer | Score | Judged | Found (avg) | Truthful (avg) | Errors | Latency |"
+    )
+    lines.append("| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |")
     for rank, row in enumerate(report.leaderboard(), start=1):
         lines.append(
-            f"| {rank} | {row.answerer} | {row.score_pct:.0f}% | "
+            f"| {rank} | {row.answerer} | {row.score_pct:.0f}% | {row.n}/{row.n_total} | "
             f"{row.mean_found:.2f} | {row.mean_truthful:.2f} | "
             f"{row.n_errors} | {row.mean_latency_s:.1f}s |"
         )
@@ -83,6 +85,7 @@ def to_html(report: RunReport) -> str:
     rows = "\n".join(
         f"<tr><td>{rank}</td><td>{esc(r.answerer)}</td>"
         f"<td class='num'>{r.score_pct:.0f}%</td>"
+        f"<td class='num'>{r.n}/{r.n_total}</td>"
         f"<td class='num'>{r.mean_found:.2f}</td>"
         f"<td class='num'>{r.mean_truthful:.2f}</td>"
         f"<td class='num'>{r.n_errors}</td>"
@@ -160,7 +163,7 @@ _HTML_TEMPLATE = """<!doctype html>
 </div>
 <h2>Leaderboard</h2>
 <table>
-<tr><th>Rank</th><th>Answerer</th><th>Score</th><th>Found</th><th>Truthful</th>
+<tr><th>Rank</th><th>Answerer</th><th>Score</th><th>Judged</th><th>Found</th><th>Truthful</th>
 <th>Errors</th><th>Latency</th></tr>
 {rows}
 </table>

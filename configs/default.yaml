@@ -1,37 +1,37 @@
 # Zero-cost defaults — needs only ONE free signup (OpenRouter).
 #
-# Both contestants and the judge run for free: `duckduckgo` needs no search key,
-# and everything LLM-shaped uses a free OpenRouter model. Get a key at
-# https://openrouter.ai/keys and set OPENAI_API_KEY in .env.
-#
-# `answerers` accepts either a bare name (uses its defaults) or a
-# {name, options} mapping for per-answerer overrides.
+# All models are free OpenRouter `:free` ids. These ids change over time; if one
+# starts returning 404, pick a current one from
+# https://openrouter.ai/models?max_price=0 (or run: papich-bench list-answerers
+# is unrelated — just browse that URL). Free models are heavily rate-limited, so
+# the run backs off/retries on 429 and uses low concurrency.
 
 dataset: datasets/obscure.yaml
 
 answerers:
   # Baseline: an LLM answering from memory, no web search. No search key.
   - name: llm_direct
-    options: { backend: openai, model: deepseek/deepseek-chat-v3-0324:free }
+    options: { backend: openai, model: nvidia/nemotron-3-super-120b-a12b:free }
 
-  # A real search engine with NO API key, summarized by the free model.
+  # A real search engine with NO API key, summarized by a free model.
   - name: duckduckgo
-    options: { summarizer_backend: openai, summarizer_model: deepseek/deepseek-chat-v3-0324:free }
+    options: { summarizer_backend: openai, summarizer_model: minimax/minimax-m3:free }
 
   # --- Other engines: uncomment and add the matching key(s) in .env ---------
   # - tavily                     # free tier — needs TAVILY_API_KEY
   # - name: google_cse           # free Google (100/day) — needs GOOGLE_API_KEY + GOOGLE_CSE_ID
-  #   options: { summarizer_backend: openai, summarizer_model: deepseek/deepseek-chat-v3-0324:free }
+  #   options: { summarizer_backend: openai, summarizer_model: minimax/minimax-m3:free }
   # - perplexity                 # paid API (free with Perplexity Pro credits)
   # - name: llm_websearch        # Claude native web search — paid Anthropic API
   #   options: { model: claude-sonnet-5 }
 
 # The LLM that grades every answer. Free via OpenRouter. Using GLM here while the
-# llm_direct contestant runs DeepSeek also avoids self-preference bias.
+# contestants run other models keeps the judge unbiased.
 judge:
   backend: openai
   model: z-ai/glm-5.2:free
 
-concurrency: 4
+concurrency: 2  # free tier rate-limits hard; keep this low
+carry_context: true
 cache_dir: .cache
 output_dir: results

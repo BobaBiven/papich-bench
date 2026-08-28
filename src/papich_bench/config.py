@@ -18,9 +18,9 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # A free OpenRouter model, used as the default wherever an LLM is needed at
-# zero cost (the judge, `llm_direct`, and search summarizers). Browse current
-# free ids at https://openrouter.ai/models?max_price=0.
-DEFAULT_FREE_MODEL = "deepseek/deepseek-chat-v3-0324:free"
+# zero cost (the judge, `llm_direct`, and search summarizers). Free ids come and
+# go — browse current ones at https://openrouter.ai/models?max_price=0.
+DEFAULT_FREE_MODEL = "z-ai/glm-5.2:free"
 
 
 class Settings(BaseSettings):

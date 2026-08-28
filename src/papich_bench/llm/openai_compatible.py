@@ -12,6 +12,7 @@ Ollama and some free tiers).
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -19,6 +20,10 @@ import httpx
 
 from papich_bench.config import Settings
 from papich_bench.llm.base import LLMClient, SchemaT
+
+# Free-tier endpoints rate-limit aggressively; back off and retry on 429/5xx.
+_MAX_RETRIES = 4
+_MAX_BACKOFF_S = 30.0
 
 
 class OpenAICompatibleLLM(LLMClient):
@@ -30,7 +35,7 @@ class OpenAICompatibleLLM(LLMClient):
         # Local Ollama needs no key; hosted providers do. Default to a dummy so
         # Ollama works out of the box, but keep any real key the user supplied.
         self._api_key = settings.openai_api_key or "not-needed"
-        self._client = httpx.AsyncClient(timeout=60.0)
+        self._client = httpx.AsyncClient(timeout=90.0)
 
     async def structured(self, *, system: str, prompt: str, schema: type[SchemaT]) -> SchemaT:
         schema_json = json.dumps(schema.model_json_schema(), indent=2)
@@ -53,11 +58,7 @@ class OpenAICompatibleLLM(LLMClient):
         # prompt and we validate the result with pydantic either way.
         attempts: tuple[dict[str, Any], ...] = ({"response_format": {"type": "json_object"}}, {})
         for extra in attempts:
-            response = await self._client.post(
-                f"{self._base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                json={**base, **extra},
-            )
+            response = await self._post_with_backoff({**base, **extra})
             if extra and response.status_code in (400, 404, 422):
                 continue
             response.raise_for_status()
@@ -67,8 +68,39 @@ class OpenAICompatibleLLM(LLMClient):
             return content
         raise RuntimeError("unreachable")  # pragma: no cover
 
+    async def _post_with_backoff(self, payload: dict[str, Any]) -> httpx.Response:
+        """POST once, retrying on 429/5xx with exponential backoff + Retry-After."""
+        delay = 2.0
+        response = None
+        for attempt in range(_MAX_RETRIES + 1):
+            response = await self._client.post(
+                f"{self._base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json=payload,
+            )
+            if response.status_code != 429 and response.status_code < 500:
+                return response
+            if attempt == _MAX_RETRIES:
+                break
+            retry_after = _retry_after_seconds(response) or delay
+            await asyncio.sleep(min(retry_after, _MAX_BACKOFF_S))
+            delay *= 2
+        assert response is not None
+        return response
+
     async def aclose(self) -> None:
         await self._client.aclose()
+
+
+def _retry_after_seconds(response: httpx.Response) -> float | None:
+    """Parse a numeric Retry-After header (seconds), if present."""
+    value = response.headers.get("retry-after")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
 
 
 def _strip_code_fence(text: str) -> str:

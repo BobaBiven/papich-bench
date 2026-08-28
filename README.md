@@ -69,8 +69,29 @@ and the `duckduckgo` search contestant needs no key at all.
    papich-bench run --html report.html
    ```
 
-Swap the free model for any other zero-price id (e.g. `z-ai/glm-4.5-air:free`) in
-`configs/default.yaml`; browse them at <https://openrouter.ai/models?max_price=0>.
+Swap the free model for any other zero-price id in `configs/default.yaml`; browse
+current ones at <https://openrouter.ai/models?max_price=0> (free ids change often
+— a `404` means the id is gone, so pick another).
+
+### Free-tier rate limits (important)
+
+OpenRouter's **free tier caps `:free` models at ~50 requests/day and ~20/minute**
+(shared across all free models). A single benchmark run makes several calls per
+step (answer + judge, plus a summarizer for search engines), so a few runs can
+exhaust the daily cap and you'll see `429` / "not judged" rows. The run already
+backs off and retries on `429`, and caching means completed answers/judgements
+are never re-billed — but a hard daily cap it cannot beat. Options:
+
+- **Park $10 of credits on OpenRouter once.** This raises the free-model cap to
+  **1000/day**, and `:free` models still cost **$0** (the balance isn't drawn
+  down). Best "still free, actually usable" fix.
+- **Run a local [Ollama](https://ollama.com)** — truly unlimited and free. Set
+  `OPENAI_BASE_URL=http://localhost:11434/v1` and use a local model id.
+- **Use [Groq](https://console.groq.com)'s free tier** (separate quota).
+- **Just wait** — the daily cap resets at UTC midnight; a re-run reuses cached
+  answers and only spends quota on the steps still missing a judgement.
+- **Spend less per run**: fewer questions/answerers, or a single answerer
+  (`--answerers duckduckgo`).
 
 ## Can I use Anthropic / Perplexity / Google for free?
 

@@ -178,11 +178,16 @@ class LeaderboardRow(BaseModel):
     """Aggregated scores for one answerer across every step of the run."""
 
     answerer: str
-    n: int
-    n_errors: int
+    n: int  # steps actually judged (the score is averaged over these)
+    n_unjudged: int  # answered but the judge failed/was skipped — score excludes these
+    n_errors: int  # steps where the answerer itself errored
     mean_found: float
     mean_truthful: float
     mean_latency_s: float
+
+    @property
+    def n_total(self) -> int:
+        return self.n + self.n_unjudged + self.n_errors
 
     @property
     def score_pct(self) -> float:
@@ -219,11 +224,13 @@ class RunReport(BaseModel):
         for name in self.answerers:
             steps = self._steps_for(name)
             scored = [s for s in steps if s.judgement is not None]
+            n_errors = sum(1 for s in steps if not s.answer.ok)
             rows.append(
                 LeaderboardRow(
                     answerer=name,
                     n=len(scored),
-                    n_errors=sum(1 for s in steps if not s.answer.ok),
+                    n_unjudged=len(steps) - len(scored) - n_errors,
+                    n_errors=n_errors,
                     mean_found=_mean(s.judgement.found_score for s in scored),  # type: ignore[union-attr]
                     mean_truthful=_mean(s.judgement.truthful_score for s in scored),  # type: ignore[union-attr]
                     mean_latency_s=_mean(s.answer.latency_s for s in steps),
