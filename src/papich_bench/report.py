@@ -53,29 +53,36 @@ def _flow_markdown(fr: FlowResult) -> list[str]:
     heading = f"### {fr.flow.id}" + ("  _(flow)_" if multi else f": {fr.flow.steps[0].prompt}")
     out = [heading + "\n"]
     for run in fr.runs:
-        out.append(f"**{run.answerer}**")
+        out.append(f"**{run.answerer}**\n")
         for step in run.steps:
             label = f"`{step.step_id}` " if multi else ""
-            if multi:
-                out.append(f"> {label}Q: {step.prompt}")
-            out.append(f"> {label}— {_score_cell(step)}")
+            quote = [f"{label}Q: {step.prompt}"] if multi else []
+            quote.append(f"{label}— {_score_cell(step)}")
             if not step.answer.ok:
-                out.append(f"> error: {step.answer.error}\n")
+                quote.append(f"error: {step.answer.error}")
+                out.extend([_blockquote(quote), ""])
                 continue
-            out.append(f"> {step.answer.text.strip() or '(empty answer)'}")
+            quote.append(step.answer.text.strip() or "(empty answer)")
             if step.judgement is not None:
                 j = step.judgement
-                out.append(
-                    f"> _found ({SCORE_LABELS[j.found_score]}):_ {j.found_reasoning}  "
+                quote.append(f"_found ({SCORE_LABELS[j.found_score]}):_ {j.found_reasoning}")
+                quote.append(
                     f"_truthful ({SCORE_LABELS[j.truthful_score]}):_ {j.truthful_reasoning}"
                 )
             elif step.judge_error:
-                out.append(f"> _judge error:_ {step.judge_error}")
+                quote.append(f"_judge error:_ {step.judge_error}")
             if multi:
-                out.append(f"> _→ next: {step.next}_")
-            out.append("")
+                quote.append(f"_→ next: {step.next}_")
+            out.extend([_blockquote(quote), ""])
         out.append("")
     return out
+
+
+def _blockquote(paragraphs: list[str]) -> str:
+    """Quote ``paragraphs``, keeping each its own paragraph — Markdown would
+    otherwise join consecutive ``>`` lines (and multi-line answers) into one."""
+    text = "\n\n".join(paragraphs)
+    return "\n".join(f"> {line}".rstrip() for line in text.splitlines())
 
 
 def to_html(report: RunReport) -> str:

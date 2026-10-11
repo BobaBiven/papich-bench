@@ -1,10 +1,44 @@
 # papich-bench
 
-A small, pluggable benchmark for **search engines, LLMs, and web-search agents**.
-(The Python package is imported as `papich_bench` — hyphens aren't valid in
-import names.)
-Ask a set of obscure questions, let any number of "answerers" respond, and have
-an LLM judge score each answer on two axes:
+[![CI](https://github.com/BobaBiven/papich-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/BobaBiven/papich-bench/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+
+**Who is Arthas in Dota 2?** To the Dota 2 crowd, it's first of all the
+nickname of **Papich**, a Ukrainian streamer. To most LLMs, it's Arthas
+Menethil, the Warcraft III Lich King. That collision makes it a good trap
+question. A model that doesn't really know the streamer scene answers
+confidently about game lore instead.
+
+papich-bench asks that question as a three-step conversation: *who is Arthas* →
+*notable facts about him* → *his old Dota moments (the Winter Wyvern game)*.
+Each follow-up is only asked if the previous answer got the streamer right.
+
+## Results so far
+
+From the latest run (2026-09-02, judged by `google/gemma-4-31b-it:free`).
+Full transcripts with the judge's reasoning are in [docs/results.md](docs/results.md).
+
+| Answerer | Kind | Score | Found | Truthful | Said Arthas is… |
+| --- | --- | ---: | ---: | ---: | --- |
+| glm-5.2 | LLM, from memory | 75% | 1 | 2 | the hero Abaddon (DotA's original Arthas) |
+| duckduckgo | search + summarizer | 75% | 1 | 2 | a Chinese pro player |
+| nemotron-ultra | LLM, from memory | 25% | 0 | 1 | not in Dota 2, just Warcraft lore |
+| minimax-m3 | LLM, from memory | 25% | 0 | 1 | not in Dota 2 (mixed up with Heroes of the Storm) |
+| nemotron-super | LLM, from memory | 0% | 0 | 0 | the inspiration for the Lich hero |
+
+**Nobody named Papich**, so no contestant got past step 1. Three of the four
+plain LLMs said there's no Arthas in Dota 2 at all. Keep the numbers in
+proportion: this is one question, scored by a free judge model. The 75% rows were
+correct about *something*, just not about what was asked, because truthfulness
+counts as much as finding the answer.
+
+## How it works
+
+Under the hood it's a small, pluggable benchmark for **search engines, LLMs,
+and web-search agents**. (The Python package is imported as `papich_bench` —
+hyphens aren't valid in import names.) It asks a set of obscure questions, lets
+any number of "answerers" respond, and has an LLM judge score each answer on two
+axes:
 
 - **Found it** — did the answer surface what you actually wanted?
 - **Truthful** — is the answer factually correct (no hallucination)?
@@ -37,23 +71,33 @@ papich-bench validate
 # Run the benchmark defined in configs/default.yaml
 papich-bench run
 
-# Run just one engine over a dataset, and also emit an HTML report
-papich-bench run --answerers llm_direct --dataset datasets/papich.yaml --html report.html
+# Run only some of the config's answerers, and also emit an HTML report
+papich-bench run --answerers glm-5.2,duckduckgo --html report.html
 
 # Re-render a saved results file without spending any API budget
-papich-bench report results/20260828-120000.json --format html --out report.html
+papich-bench report results/20260902-134014.json --format html --out report.html
 
 # See what's available
 papich-bench list-answerers
 ```
 
-Each run writes a full `results/<timestamp>.json` and prints a leaderboard:
+Each run writes a full `results/<timestamp>.json` and prints a leaderboard like
+the one under [Results so far](#results-so-far).
 
-```
-        Leaderboard
- #  Answerer     Score  Found  Truthful  Errors  Latency
- 1  duckduckgo     71%   1.57      1.29       0     1.8s
- 2  llm_direct     54%   1.14      1.00       0     2.3s
+`--answerers` matches config entries by `label` or by answerer name, so the
+selected entries keep their options. `glm-5.2` picks that one model, and
+`llm_direct` picks every `llm_direct` entry. To run the same answerer several
+times with different models, give each entry a distinct `label`. The config
+refuses two entries that would share a leaderboard row:
+
+```yaml
+answerers:
+  - name: llm_direct
+    label: glm-5.2
+    options: { backend: openai, model: z-ai/glm-5.2:free }
+  - name: llm_direct
+    label: minimax-m3
+    options: { backend: openai, model: minimax/minimax-m3:free }
 ```
 
 ## Zero-cost quickstart
@@ -248,7 +292,3 @@ ruff check . && ruff format --check .
 mypy src
 pytest            # fully offline — no keys or network needed
 ```
-
-## License
-
-MIT

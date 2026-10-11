@@ -8,13 +8,11 @@ version = "0.1.0"
 description = "A pluggable benchmark that rates search engines, LLMs, and agents on obscure questions."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
 authors = [{ name = "Askar Gabitov", email = "agabitov25@gmail.com" }]
 keywords = ["benchmark", "search", "llm", "agent", "evaluation", "rag"]
 classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
 ]
 
 dependencies = [
