@@ -23,7 +23,7 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_FREE_MODEL = "z-ai/glm-5.2:free"
+DEFAULT_FREE_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 
 
 class Settings(BaseSettings):

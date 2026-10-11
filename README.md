@@ -15,8 +15,9 @@ Each follow-up is only asked if the previous answer got the streamer right.
 
 ## Results so far
 
-From the latest run (2026-09-02, judged by `google/gemma-4-31b-it:free`).
-Full transcripts with the judge's reasoning are in [docs/results.md](docs/results.md).
+From the latest run (2026-09-02, judged by `google/gemma-4-31b-it:free`). Score
+is [reference grading](#how-it-works). Full transcripts with the judge's
+reasoning are in [docs/results.md](docs/results.md).
 
 | Answerer | Kind | Score | Found | Truthful | Said Arthas is… |
 | --- | --- | ---: | ---: | ---: | --- |
@@ -32,6 +33,10 @@ proportion: this is one question, scored by a free judge model. The 75% rows wer
 correct about *something*, just not about what was asked, because truthfulness
 counts as much as finding the answer.
 
+Since this run, `glm-5.2` and `minimax-m3` have left OpenRouter's free tier. The
+default config now runs `dots-3-note` and `nemotron-lightning` in their place, so
+the next run's lineup will differ.
+
 ## How it works
 
 Under the hood it's a small, pluggable benchmark for **search engines, LLMs,
@@ -42,6 +47,12 @@ axes:
 
 - **Found it** — did the answer surface what you actually wanted?
 - **Truthful** — is the answer factually correct (no hallucination)?
+
+This is **reference grading**. For every question you write the correct answer
+(`reference_answer`) and what counts as finding it (`wanted`). The judge scores
+each answer against those, 0–2 on each axis, and the leaderboard's **Score** is
+(found + truthful) / 4 as a percentage. The rubric the judge follows lives in
+`src/papich_bench/judge.py`.
 
 The whole point is that **adding a new engine or model is one small file or a few
 config lines** — Tavily today, Perplexity, Google, or something else tomorrow.
@@ -72,7 +83,7 @@ papich-bench validate
 papich-bench run
 
 # Run only some of the config's answerers, and also emit an HTML report
-papich-bench run --answerers glm-5.2,duckduckgo --html report.html
+papich-bench run --answerers dots-3-note,duckduckgo --html report.html
 
 # Re-render a saved results file without spending any API budget
 papich-bench report results/20260902-134014.json --format html --out report.html
@@ -85,7 +96,7 @@ Each run writes a full `results/<timestamp>.json` and prints a leaderboard like
 the one under [Results so far](#results-so-far).
 
 `--answerers` matches config entries by `label` or by answerer name, so the
-selected entries keep their options. `glm-5.2` picks that one model, and
+selected entries keep their options. `dots-3-note` picks that one model, and
 `llm_direct` picks every `llm_direct` entry. To run the same answerer several
 times with different models, give each entry a distinct `label`. The config
 refuses two entries that would share a leaderboard row:
@@ -93,11 +104,11 @@ refuses two entries that would share a leaderboard row:
 ```yaml
 answerers:
   - name: llm_direct
-    label: glm-5.2
-    options: { backend: openai, model: z-ai/glm-5.2:free }
+    label: dots-3-note
+    options: { backend: openai, model: dots-studio/dots-3-note-preview:free }
   - name: llm_direct
-    label: minimax-m3
-    options: { backend: openai, model: minimax/minimax-m3:free }
+    label: nemotron-lightning
+    options: { backend: openai, model: nvidia/nemotron-3.5-lightning:free }
 ```
 
 ## Zero-cost quickstart

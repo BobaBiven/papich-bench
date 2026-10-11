@@ -19,20 +19,20 @@ answerers:
     label: nemotron-ultra
     options: { backend: openai, model: nvidia/nemotron-3-ultra-550b-a55b:free }
   - name: llm_direct
-    label: glm-5.2
-    options: { backend: openai, model: z-ai/glm-5.2:free }
+    label: dots-3-note
+    options: { backend: openai, model: dots-studio/dots-3-note-preview:free }
   - name: llm_direct
-    label: minimax-m3
-    options: { backend: openai, model: minimax/minimax-m3:free }
+    label: nemotron-lightning
+    options: { backend: openai, model: nvidia/nemotron-3.5-lightning:free }
 
   # A real search engine with NO API key, summarized by a free model.
   - name: duckduckgo
-    options: { summarizer_backend: openai, summarizer_model: minimax/minimax-m3:free }
+    options: { summarizer_backend: openai, summarizer_model: nvidia/nemotron-3.5-lightning:free }
 
   # --- Other engines: uncomment and add the matching key(s) in .env ---------
   # - tavily                     # free tier — needs TAVILY_API_KEY
   # - name: google_cse           # free Google (100/day) — needs GOOGLE_API_KEY + GOOGLE_CSE_ID
-  #   options: { summarizer_backend: openai, summarizer_model: minimax/minimax-m3:free }
+  #   options: { summarizer_backend: openai, summarizer_model: nvidia/nemotron-3.5-lightning:free }
   # - perplexity                 # paid API (free with Perplexity Pro credits)
   # - name: llm_websearch        # Claude native web search — paid Anthropic API
   #   options: { model: claude-sonnet-5 }
