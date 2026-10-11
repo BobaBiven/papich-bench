@@ -27,7 +27,7 @@ class GoogleCSEAnswerer(SummarizingSearchAnswerer):
         super().__init__(summarizer)
         self._api_key = api_key
         self._cse_id = cse_id
-        self._num_results = min(num_results, 10)  # API caps `num` at 10
+        self._num_results = min(num_results, 10)
         self._client = httpx.AsyncClient(timeout=30.0)
 
     @classmethod

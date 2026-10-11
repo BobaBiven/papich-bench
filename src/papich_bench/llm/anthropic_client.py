@@ -30,7 +30,7 @@ class AnthropicLLM(LLMClient):
             output_format=schema,
         )
         parsed = response.parsed_output
-        if parsed is None:  # pragma: no cover - guarded by the API contract
+        if parsed is None:
             raise RuntimeError("Anthropic returned no parsed output")
         return parsed
 

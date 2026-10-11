@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from papich_bench import answerers as _answerers  # noqa: F401 - registers built-ins
+from papich_bench import answerers as _answerers  # noqa: F401
 from papich_bench.answerers.base import Answerer
 from papich_bench.registry import available_answerers, get_answerer, register_answerer
 
@@ -37,5 +37,4 @@ def test_duplicate_registration_raises() -> None:
 
         @register_answerer("tavily")
         class _Dup(Answerer):
-            async def _answer(self, prompt: str):  # type: ignore[no-untyped-def]
-                ...
+            async def _answer(self, prompt: str): ...

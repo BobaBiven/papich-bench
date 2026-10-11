@@ -48,10 +48,12 @@ def load_dataset(path: str | Path) -> list[Flow]:
 
 
 def _to_flow(item: dict[str, Any]) -> Flow:
-    """Accept both the single-question shorthand and the full flow shape."""
+    """Accept both the single-question shorthand and the full flow shape.
+
+    A single question becomes a one-step flow whose step id is the item id.
+    """
     if "steps" in item:
         return Flow.model_validate(item)
-    # Single question -> a one-step flow whose step id equals the item id.
     step = FlowStep.model_validate(
         {k: v for k, v in item.items() if k in {"id", "prompt", "reference_answer", "wanted"}}
     )

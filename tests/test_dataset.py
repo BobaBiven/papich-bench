@@ -21,8 +21,8 @@ def test_loads_default_dataset() -> None:
 
 def test_loads_flow_with_branches() -> None:
     flow = load_dataset("datasets/papich.yaml")[0]
-    assert flow.step("who-is-arthas").branches[0].then == "notable-facts"  # type: ignore[union-attr]
-    assert flow.step("notable-facts").branches[1].then == "stop"  # type: ignore[union-attr]
+    assert flow.step("who-is-arthas").branches[0].then == "notable-facts"
+    assert flow.step("notable-facts").branches[1].then == "stop"
 
 
 def test_missing_file_raises(tmp_path: Path) -> None:

@@ -62,7 +62,7 @@ async def test_flow_branches_into_followup(
     report = await runner.run_benchmark(_config(tmp_path), Settings(), use_cache=False)
 
     run = report.results[0].runs[0]
-    assert [s.step_id for s in run.steps] == ["q1", "q2"]  # branch 1 -> q2
+    assert [s.step_id for s in run.steps] == ["q1", "q2"]
     assert run.steps[0].next == "q2"
 
 
@@ -73,5 +73,5 @@ async def test_flow_stops_on_first_step(
     report = await runner.run_benchmark(_config(tmp_path), Settings(), use_cache=False)
 
     run = report.results[0].runs[0]
-    assert [s.step_id for s in run.steps] == ["q1"]  # branch 0 -> stop
+    assert [s.step_id for s in run.steps] == ["q1"]
     assert run.steps[0].next == "stop"

@@ -37,6 +37,8 @@ class LLMWebSearchAnswerer(Answerer):
         )
 
     async def _answer(self, prompt: str) -> AnswerContent:
+        """Ask Claude with web search on. When the server tool hits its per-turn
+        limit (``pause_turn``), re-send the conversation so it can continue."""
         tools = [{**WEB_SEARCH_TOOL, "max_uses": self._max_uses}]
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
 
@@ -52,7 +54,6 @@ class LLMWebSearchAnswerer(Answerer):
             _collect(response.content, text_parts, citations)
             if response.stop_reason != "pause_turn":
                 break
-            # Server tool hit its per-turn limit; re-send to let it continue.
             messages.append({"role": "assistant", "content": response.content})
 
         return AnswerContent(

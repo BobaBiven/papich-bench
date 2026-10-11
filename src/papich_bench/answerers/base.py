@@ -77,7 +77,7 @@ class Answerer(ABC):
                 latency_s=round(time.perf_counter() - start, 3),
                 raw=content.raw,
             )
-        except Exception as exc:  # an answerer failing is a data point, not a crash
+        except Exception as exc:
             return Answer(
                 answerer=self.name,
                 step_id=step_id,

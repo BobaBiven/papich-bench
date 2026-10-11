@@ -17,12 +17,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# Scores are on a small, explicit 0-2 scale so the judge's job is unambiguous.
 SCORE_MIN = 0
 SCORE_MAX = 2
 SCORE_LABELS = {0: "no", 1: "partial", 2: "yes"}
 
-STOP = "stop"  # the reserved "end the flow" target for a branch
+STOP = "stop"
 
 
 class Citation(BaseModel):
@@ -150,14 +149,15 @@ class Judgement(BaseModel):
 
 
 class StepResult(BaseModel):
-    """One answered (and judged) step within a flow run."""
+    """One answered (and judged) step within a flow run. ``next`` is the step
+    the router chose after it, or ``stop``."""
 
     step_id: str
     prompt: str
     answer: Answer
     judgement: Judgement | None = None
     judge_error: str | None = None
-    next: str = STOP  # the branch taken after this step
+    next: str = STOP
 
 
 class FlowRun(BaseModel):
@@ -175,12 +175,17 @@ class FlowResult(BaseModel):
 
 
 class LeaderboardRow(BaseModel):
-    """Aggregated scores for one answerer across every step of the run."""
+    """Aggregated scores for one answerer across every step of the run.
+
+    Every step lands in exactly one bucket: ``n`` judged (the means average over
+    these), ``n_unjudged`` answered but the judge failed, or ``n_errors`` where
+    the answerer itself errored.
+    """
 
     answerer: str
-    n: int  # steps actually judged (the score is averaged over these)
-    n_unjudged: int  # answered but the judge failed/was skipped — score excludes these
-    n_errors: int  # steps where the answerer itself errored
+    n: int
+    n_unjudged: int
+    n_errors: int
     mean_found: float
     mean_truthful: float
     mean_latency_s: float
@@ -223,16 +228,16 @@ class RunReport(BaseModel):
         rows: list[LeaderboardRow] = []
         for name in self.answerers:
             steps = self._steps_for(name)
-            scored = [s for s in steps if s.judgement is not None]
+            judged = [s.judgement for s in steps if s.judgement is not None]
             n_errors = sum(1 for s in steps if not s.answer.ok)
             rows.append(
                 LeaderboardRow(
                     answerer=name,
-                    n=len(scored),
-                    n_unjudged=len(steps) - len(scored) - n_errors,
+                    n=len(judged),
+                    n_unjudged=len(steps) - len(judged) - n_errors,
                     n_errors=n_errors,
-                    mean_found=_mean(s.judgement.found_score for s in scored),  # type: ignore[union-attr]
-                    mean_truthful=_mean(s.judgement.truthful_score for s in scored),  # type: ignore[union-attr]
+                    mean_found=_mean(j.found_score for j in judged),
+                    mean_truthful=_mean(j.truthful_score for j in judged),
                     mean_latency_s=_mean(s.answer.latency_s for s in steps),
                 )
             )

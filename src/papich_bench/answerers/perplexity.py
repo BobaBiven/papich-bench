@@ -42,7 +42,6 @@ class PerplexityAnswerer(Answerer):
         response.raise_for_status()
         data = response.json()
         text = data["choices"][0]["message"]["content"]
-        # Perplexity returns citations as bare URLs, or richer `search_results`.
         citations: list[Citation] = []
         for result in data.get("search_results", []):
             if result.get("url"):

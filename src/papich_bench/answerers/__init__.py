@@ -7,7 +7,7 @@ Add a new engine by dropping a module here and importing it below.
 
 from __future__ import annotations
 
-from papich_bench.answerers import (  # noqa: F401 - imported for side effects
+from papich_bench.answerers import (  # noqa: F401
     duckduckgo,
     google_cse,
     google_serpapi,

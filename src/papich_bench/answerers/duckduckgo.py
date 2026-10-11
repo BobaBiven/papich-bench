@@ -24,14 +24,13 @@ class DuckDuckGoAnswerer(SummarizingSearchAnswerer):
 
     @classmethod
     def from_settings(cls, settings: Settings, options: dict[str, Any]) -> DuckDuckGoAnswerer:
-        # No search key needed — only a summarizer LLM.
         return cls(
             cls._build_summarizer(settings, options),
             max_results=int(options.get("max_results", 5)),
         )
 
     async def _search(self, prompt: str) -> list[SearchResult]:
-        # ddgs is synchronous and does blocking I/O; run it off the event loop.
+        """``ddgs`` is synchronous, so the search runs in a worker thread."""
         rows = await asyncio.to_thread(self._search_sync, prompt)
         return [
             SearchResult(url=r["href"], title=r.get("title"), snippet=r.get("body", ""))
@@ -42,7 +41,7 @@ class DuckDuckGoAnswerer(SummarizingSearchAnswerer):
     def _search_sync(self, prompt: str) -> list[dict[str, Any]]:
         try:
             from ddgs import DDGS
-        except ImportError as exc:  # pragma: no cover - dependency is declared
+        except ImportError as exc:
             raise RuntimeError(
                 "the 'duckduckgo' answerer needs the 'ddgs' package (pip install ddgs)"
             ) from exc

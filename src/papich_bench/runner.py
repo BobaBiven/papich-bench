@@ -35,7 +35,7 @@ from papich_bench.router import Router
 
 ProgressFn = Callable[[str], None]
 
-MAX_STEPS = 12  # safety cap on flow length (also guards accidental cycles)
+MAX_STEPS = 12
 
 
 @dataclass
@@ -64,7 +64,7 @@ async def run_benchmark(
     flows = load_dataset(config.dataset)
     cache = JSONCache(config.cache_dir, enabled=use_cache)
     contestants = build_contestants(config, settings)
-    llm = build_llm(config.judge, settings)  # shared by judge + router
+    llm = build_llm(config.judge, settings)
     judge, router = Judge(llm), Router(llm)
     sem = asyncio.Semaphore(max(1, config.concurrency))
 
@@ -121,6 +121,9 @@ async def _run_flow_for_contestant(
     sem: asyncio.Semaphore,
     progress: ProgressFn,
 ) -> FlowRun:
+    """Walk one flow with one answerer until a branch says ``stop``, a step
+    repeats, or ``MAX_STEPS`` is hit. A judge failure is recorded on the step;
+    a routing failure ends the flow."""
     history: list[Turn] = []
     visited: set[str] = set()
     steps_out: list[StepResult] = []
@@ -142,13 +145,13 @@ async def _run_flow_for_contestant(
                     result.judgement = await _get_judgement(
                         step, answer, judge, config.judge, cache
                     )
-                except Exception as exc:  # surface, don't crash the run
+                except Exception as exc:
                     result.judge_error = f"{type(exc).__name__}: {exc}"
             if step.branches:
                 async with sem:
                     try:
                         result.next = await _get_route(step, answer, router, config.judge, cache)
-                    except Exception:  # a routing failure just ends the flow
+                    except Exception:
                         result.next = STOP
             history.append(Turn(question=step.prompt, answer=answer.text))
 
@@ -163,6 +166,7 @@ async def _run_flow_for_contestant(
 async def _get_answer(
     prompt: str, step: FlowStep, contestant: _Contestant, cache: JSONCache
 ) -> Answer:
+    """Failed answers are never cached, so the next run retries them."""
     key = {
         "answerer": contestant.spec.name,
         "options": contestant.spec.options,
@@ -173,7 +177,7 @@ async def _get_answer(
         return Answer.model_validate(cached)
 
     answer = await contestant.answerer.run(prompt, step.id)
-    if answer.ok:  # never cache failures — let them be retried next run
+    if answer.ok:
         cache.set("answers", key, answer.model_dump(mode="json"))
     return answer
 

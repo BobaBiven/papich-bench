@@ -21,19 +21,19 @@ import httpx
 from papich_bench.config import Settings
 from papich_bench.llm.base import LLMClient, SchemaT
 
-# Free-tier endpoints rate-limit aggressively; back off and retry on 429/5xx.
 _MAX_RETRIES = 4
 _MAX_BACKOFF_S = 30.0
 
 
 class OpenAICompatibleLLM(LLMClient):
-    """Any OpenAI-compatible chat-completions endpoint."""
+    """Any OpenAI-compatible chat-completions endpoint.
+
+    Without ``OPENAI_API_KEY`` it sends a dummy key, which local Ollama accepts.
+    """
 
     def __init__(self, settings: Settings, model: str = "gpt-4o-mini") -> None:
         self.model = model
         self._base_url = settings.openai_base_url.rstrip("/")
-        # Local Ollama needs no key; hosted providers do. Default to a dummy so
-        # Ollama works out of the box, but keep any real key the user supplied.
         self._api_key = settings.openai_api_key or "not-needed"
         self._client = httpx.AsyncClient(timeout=90.0)
 
@@ -52,10 +52,9 @@ class OpenAICompatibleLLM(LLMClient):
         return schema.model_validate_json(_strip_code_fence(content))
 
     async def _chat(self, messages: list[dict[str, str]]) -> str:
+        """Try JSON mode first, then a plain request for models that reject
+        ``response_format`` — the schema is in the prompt and validated either way."""
         base: dict[str, Any] = {"model": self.model, "temperature": 0, "messages": messages}
-        # Prefer JSON mode, but some free/hosted models reject `response_format`.
-        # Fall back to a plain request — the schema is already pinned in the
-        # prompt and we validate the result with pydantic either way.
         attempts: tuple[dict[str, Any], ...] = ({"response_format": {"type": "json_object"}}, {})
         for extra in attempts:
             response = await self._post_with_backoff({**base, **extra})
@@ -66,7 +65,7 @@ class OpenAICompatibleLLM(LLMClient):
             if not isinstance(content, str):
                 raise RuntimeError("OpenAI-compatible endpoint returned non-text content")
             return content
-        raise RuntimeError("unreachable")  # pragma: no cover
+        raise RuntimeError("unreachable")
 
     async def _post_with_backoff(self, payload: dict[str, Any]) -> httpx.Response:
         """POST once, retrying on 429/5xx with exponential backoff + Retry-After."""

@@ -58,7 +58,7 @@ async def test_run_produces_scored_report(tmp_path: Path) -> None:
     assert row.n == 2
     assert row.mean_found == 2.0
     assert row.mean_truthful == 1.0
-    assert row.score_pct == 75.0  # (2+1)/4
+    assert row.score_pct == 75.0
 
 
 async def test_failing_answerer_is_recorded_not_fatal(tmp_path: Path) -> None:
@@ -67,16 +67,15 @@ async def test_failing_answerer_is_recorded_not_fatal(tmp_path: Path) -> None:
 
     rows = {r.answerer: r for r in report.leaderboard()}
     assert rows["boom"].n_errors == 2
-    assert rows["boom"].n == 0  # nothing was judged
-    assert rows["fake"].n == 2  # the good answerer still ran
+    assert rows["boom"].n == 0
+    assert rows["fake"].n == 2
 
 
 async def test_cache_prevents_recompute(tmp_path: Path) -> None:
     cfg = _config(tmp_path, ["fake"])
     await runner.run_benchmark(cfg, Settings(), use_cache=True)
-    assert FakeAnswerer.calls == 2  # one per question
+    assert FakeAnswerer.calls == 2
 
-    # Second run with the same cache should not call the answerer again.
     await runner.run_benchmark(cfg, Settings(), use_cache=True)
     assert FakeAnswerer.calls == 2
 
@@ -94,6 +93,5 @@ async def test_report_renders(tmp_path: Path) -> None:
     assert "<table>" in html
     assert "papich-bench results" in html
 
-    # Round-trips through JSON like the CLI's `report` command.
     restored = RunReport.model_validate_json(report.model_dump_json())
     assert restored.leaderboard()[0].answerer == "fake"

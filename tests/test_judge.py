@@ -30,9 +30,9 @@ async def test_judge_returns_scores(fake_llm: FakeLLM) -> None:
 def test_prompt_includes_reference_and_candidate() -> None:
     answer = Answer(answerer="fake", step_id="q1", text="Some candidate text")
     prompt = _build_prompt(_step(), answer)
-    assert "Testville" in prompt  # reference answer
-    assert "Some candidate text" in prompt  # candidate
-    assert "fake" in prompt  # answerer name
+    assert "Testville" in prompt
+    assert "Some candidate text" in prompt
+    assert "fake" in prompt
 
 
 def test_prompt_handles_empty_answer() -> None:

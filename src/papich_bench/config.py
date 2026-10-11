@@ -6,6 +6,11 @@ Two layers, kept separate on purpose:
 * ``RunConfig`` — what to run (dataset, answerers, judge), read from a YAML file.
 
 The CLI loads both and hands them to the runner.
+
+``DEFAULT_FREE_MODEL`` is the zero-cost model used wherever an answerer needs an
+LLM and the config doesn't name one (``llm_direct``, search summarizers). Free
+OpenRouter ids come and go — browse current ones at
+https://openrouter.ai/models?max_price=0.
 """
 
 from __future__ import annotations
@@ -18,9 +23,6 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# A free OpenRouter model, used as the default wherever an LLM is needed at
-# zero cost (the judge, `llm_direct`, and search summarizers). Free ids come and
-# go — browse current ones at https://openrouter.ai/models?max_price=0.
 DEFAULT_FREE_MODEL = "z-ai/glm-5.2:free"
 
 
@@ -38,7 +40,6 @@ class Settings(BaseSettings):
     perplexity_api_key: str | None = None
     serpapi_api_key: str | None = None
 
-    # Google Programmable Search (Custom Search JSON API) — free, 100 queries/day.
     google_api_key: str | None = None
     google_cse_id: str | None = None
 
@@ -55,19 +56,24 @@ class Settings(BaseSettings):
 
 
 class LLMSpec(BaseModel):
-    """Which LLM backs a role (the judge, or an LLM-based answerer)."""
+    """Which LLM backs a role (the judge, or an LLM-based answerer).
 
-    backend: str = "anthropic"  # "anthropic" | "openai"
+    ``backend`` is ``anthropic`` or ``openai`` (any OpenAI-compatible endpoint).
+    """
+
+    backend: str = "anthropic"
     model: str = "claude-sonnet-5"
 
 
 class AnswererSpec(BaseModel):
-    """One answerer to run, plus any per-answerer overrides (e.g. model)."""
+    """One answerer to run, plus any per-answerer overrides (e.g. model).
+
+    ``label`` is an optional display name, so several entries of the same
+    answerer (e.g. two ``llm_direct`` models) show up as distinct leaderboard
+    rows. It falls back to ``name``.
+    """
 
     name: str
-    # Optional display name, so several entries of the same answerer (e.g. two
-    # ``llm_direct`` models) show up as distinct rows on the leaderboard. Falls
-    # back to ``name`` when unset.
     label: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
 
@@ -77,20 +83,23 @@ class AnswererSpec(BaseModel):
 
 
 class RunConfig(BaseModel):
-    """Everything that defines a run, loaded from a YAML config file."""
+    """Everything that defines a run, loaded from a YAML config file.
+
+    With ``carry_context``, follow-up steps in a flow see the earlier turns.
+    """
 
     dataset: str = "datasets/papich.yaml"
     answerers: list[AnswererSpec] = Field(default_factory=list)
     judge: LLMSpec = Field(default_factory=LLMSpec)
     concurrency: int = 4
-    carry_context: bool = True  # in flows, follow-ups see prior turns
+    carry_context: bool = True
     cache_dir: str = ".cache"
     output_dir: str = "results"
 
     @model_validator(mode="after")
     def _unique_display_names(self) -> RunConfig:
-        # The leaderboard groups results by display name, so two entries sharing
-        # one would silently merge into a single row.
+        """Reject entries sharing a display name — the leaderboard groups by it,
+        so they would silently merge into a single row."""
         names = [a.display_name for a in self.answerers]
         dupes = sorted({n for n in names if names.count(n) > 1})
         if dupes:
@@ -102,9 +111,9 @@ class RunConfig(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> RunConfig:
+        """Load a config file. ``answerers`` accepts bare names
+        (``[tavily, perplexity]``) as well as the full ``{name, label, options}`` form."""
         raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
-        # Allow the shorthand `answerers: [tavily, perplexity]` alongside the
-        # full `{name: ..., options: {...}}` form.
         answerers = raw.get("answerers", [])
         raw["answerers"] = [{"name": a} if isinstance(a, str) else a for a in answerers]
         try:

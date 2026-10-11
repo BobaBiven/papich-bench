@@ -17,13 +17,13 @@ async def test_llm_direct_answers_via_llm() -> None:
 
     assert answer.ok
     assert answer.text == "It is Testville."
-    assert answer.citations == []  # no search -> no citations
+    assert answer.citations == []
     assert llm.calls == 1
 
 
 async def test_llm_direct_reports_llm_failure() -> None:
     class Boom(FakeLLM):
-        async def structured(self, *, system: str, prompt: str, schema: type):  # type: ignore[override,no-untyped-def]
+        async def structured(self, *, system: str, prompt: str, schema: type):
             raise RuntimeError("model down")
 
     answerer = LLMDirectAnswerer(Boom({}))
@@ -33,7 +33,7 @@ async def test_llm_direct_reports_llm_failure() -> None:
     assert "model down" in (answer.error or "")
 
 
-async def test_summarizing_search_answerer(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+async def test_summarizing_search_answerer(monkeypatch) -> None:
     """DuckDuckGo exercises the shared search+summarize base (no network)."""
     llm = FakeLLM({"answer": "Testville is the capital."})
     answerer = DuckDuckGoAnswerer(llm)

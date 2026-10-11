@@ -9,7 +9,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from papich_bench import answerers as _answerers  # noqa: F401 - registers answerers
+from papich_bench import answerers as _answerers  # noqa: F401
 from papich_bench.config import ConfigError, RunConfig, Settings
 from papich_bench.dataset import load_dataset
 from papich_bench.models import RunReport
