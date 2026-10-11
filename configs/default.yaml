@@ -2,16 +2,28 @@
 #
 # All models are free OpenRouter `:free` ids. These ids change over time; if one
 # starts returning 404, pick a current one from
-# https://openrouter.ai/models?max_price=0 (or run: papich-bench list-answerers
-# is unrelated — just browse that URL). Free models are heavily rate-limited, so
-# the run backs off/retries on 429 and uses low concurrency.
+# https://openrouter.ai/models?max_price=0. Free models are heavily rate-limited,
+# so the run backs off/retries on 429 and uses low concurrency.
 
 dataset: datasets/papich.yaml
 
 answerers:
-  # Baseline: an LLM answering from memory, no web search. No search key.
+  # Baselines: several LLMs answering from memory, no web search. Same answerer
+  # (`llm_direct`), different models — `label` keeps them as distinct rows on the
+  # leaderboard (and is what `--answerers` matches on). All free OpenRouter ids;
+  # swap freely.
   - name: llm_direct
+    label: nemotron-super
     options: { backend: openai, model: nvidia/nemotron-3-super-120b-a12b:free }
+  - name: llm_direct
+    label: nemotron-ultra
+    options: { backend: openai, model: nvidia/nemotron-3-ultra-550b-a55b:free }
+  - name: llm_direct
+    label: glm-5.2
+    options: { backend: openai, model: z-ai/glm-5.2:free }
+  - name: llm_direct
+    label: minimax-m3
+    options: { backend: openai, model: minimax/minimax-m3:free }
 
   # A real search engine with NO API key, summarized by a free model.
   - name: duckduckgo
@@ -25,11 +37,12 @@ answerers:
   # - name: llm_websearch        # Claude native web search — paid Anthropic API
   #   options: { model: claude-sonnet-5 }
 
-# The LLM that grades every answer. Free via OpenRouter. Using GLM here while the
-# contestants run other models keeps the judge unbiased.
+# The LLM that grades every answer (and routes flow branches). Free via
+# OpenRouter. It's deliberately a model that isn't also a contestant, so it never
+# grades its own answers.
 judge:
   backend: openai
-  model: z-ai/glm-5.2:free
+  model: google/gemma-4-31b-it:free
 
 concurrency: 2  # free tier rate-limits hard; keep this low
 carry_context: true

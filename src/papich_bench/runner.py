@@ -87,7 +87,7 @@ async def run_benchmark(
     return RunReport(
         dataset=config.dataset,
         judge_model=judge.model,
-        answerers=[c.spec.name for c in contestants],
+        answerers=[c.spec.display_name for c in contestants],
         results=list(results),
     )
 
@@ -132,7 +132,7 @@ async def _run_flow_for_contestant(
 
         async with sem:
             answer = await _get_answer(prompt, step, contestant, cache)
-        progress(f"answered {flow.id}/{step.id} · {contestant.spec.name}")
+        progress(f"answered {flow.id}/{step.id} · {contestant.spec.display_name}")
 
         result = StepResult(step_id=step.id, prompt=step.prompt, answer=answer)
         usable = answer.ok and bool(answer.text.strip())
@@ -157,7 +157,7 @@ async def _run_flow_for_contestant(
             break
         step = flow.step(result.next)
 
-    return FlowRun(answerer=contestant.spec.name, steps=steps_out)
+    return FlowRun(answerer=contestant.spec.display_name, steps=steps_out)
 
 
 async def _get_answer(

@@ -26,7 +26,10 @@ def run(
     config: Path = typer.Option("configs/default.yaml", "--config", "-c", help="Run config YAML."),
     dataset: Path | None = typer.Option(None, help="Override the dataset path in the config."),
     answerers: str | None = typer.Option(
-        None, "--answerers", "-a", help="Comma-separated answerer names to override the config."
+        None,
+        "--answerers",
+        "-a",
+        help="Comma-separated labels or answerer names; runs only those config entries.",
     ),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore the on-disk cache."),
     html_out: Path | None = typer.Option(None, "--html", help="Also write an HTML report here."),
@@ -102,9 +105,7 @@ def _load_config(config: Path, dataset: Path | None, answerers: str | None) -> R
     if dataset is not None:
         cfg.dataset = str(dataset)
     if answerers is not None:
-        from papich_bench.config import AnswererSpec
-
-        cfg.answerers = [AnswererSpec(name=n.strip()) for n in answerers.split(",") if n.strip()]
+        cfg.answerers = cfg.select_answerers(n.strip() for n in answerers.split(",") if n.strip())
     return cfg
 
 
