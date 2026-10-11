@@ -1,8 +1,9 @@
 """Google via the Programmable Search / Custom Search JSON API + a summarizer.
 
-This is the *free* way to use real Google results: the Custom Search JSON API
-gives 100 queries/day at no cost. You need a (free) API key and a Programmable
-Search Engine id — see .env.example for the two links.
+The Custom Search JSON API gives 100 queries/day at no cost, but Google has
+closed it to new customers and shuts it down on 2027-01-01 — new users should use
+``google_serpapi`` instead. Existing customers need an API key and a
+Programmable Search Engine id (see .env.example).
 """
 
 from __future__ import annotations

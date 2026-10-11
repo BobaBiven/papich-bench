@@ -31,9 +31,11 @@ answerers:
 
   # --- Other engines: uncomment and add the matching key(s) in .env ---------
   # - tavily                     # free tier — needs TAVILY_API_KEY
-  # - name: google_cse           # free Google (100/day) — needs GOOGLE_API_KEY + GOOGLE_CSE_ID
+  # - name: google_serpapi       # Google via SerpAPI (250 free/month) — needs SERPAPI_API_KEY
   #   options: { summarizer_backend: openai, summarizer_model: nvidia/nemotron-3.5-lightning:free }
-  # - perplexity                 # paid API (free with Perplexity Pro credits)
+  # - name: google_cse           # Google Custom Search — existing customers only, ends 2027-01-01
+  #   options: { summarizer_backend: openai, summarizer_model: nvidia/nemotron-3.5-lightning:free }
+  # - perplexity                 # paid API — needs PERPLEXITY_API_KEY
   # - name: llm_websearch        # Claude native web search — paid Anthropic API
   #   options: { model: claude-sonnet-5 }
 

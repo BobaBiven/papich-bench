@@ -86,7 +86,7 @@ papich-bench run
 papich-bench run --answerers dots-3-note,duckduckgo --html report.html
 
 # Re-render a saved results file without spending any API budget
-papich-bench report results/20260902-134014.json --format html --out report.html
+papich-bench report results/<timestamp>.json --format html --out report.html
 
 # See what's available
 papich-bench list-answerers
@@ -114,13 +114,13 @@ answerers:
 ## Zero-cost quickstart
 
 The defaults cost **nothing** and need exactly **one free signup**. The judge and
-the `llm_direct` baseline run on a free [OpenRouter](https://openrouter.ai) model,
-and the `duckduckgo` search contestant needs no key at all.
+the four `llm_direct` baselines run on free [OpenRouter](https://openrouter.ai)
+models, and the `duckduckgo` search contestant needs no key at all.
 
 1. Get a free key at <https://openrouter.ai/keys>.
-2. `cp .env.example .env`, then set `OPENAI_API_KEY=<your OpenRouter key>` (the
-   base URL already defaults to OpenRouter).
-3. Run the default config — a plain LLM vs. a real search engine, judged for free:
+2. `cp .env.example .env`, then set `OPENAI_API_KEY=<your OpenRouter key>`
+   (`.env.example` already points the base URL at OpenRouter).
+3. Run the default config — four plain LLMs vs. a real search engine, judged for free:
 
    ```bash
    papich-bench run --html report.html
@@ -134,7 +134,8 @@ current ones at <https://openrouter.ai/models?max_price=0> (free ids change ofte
 
 OpenRouter's **free tier caps `:free` models at ~50 requests/day and ~20/minute**
 (shared across all free models). A single benchmark run makes several calls per
-step (answer + judge, plus a summarizer for search engines), so a few runs can
+step (answer, judge, and the router on steps with branches, plus a summarizer for
+search engines), so a few runs can
 exhaust the daily cap and you'll see `429` / "not judged" rows. The run already
 backs off and retries on `429`, and caching means completed answers/judgements
 are never re-billed — but a hard daily cap it cannot beat. Options:
@@ -152,19 +153,19 @@ are never re-billed — but a hard daily cap it cannot beat. Options:
 
 ## Can I use Anthropic / Perplexity / Google for free?
 
-For low volume, mostly yes — the trick is which door you use:
+For low volume, partly — the trick is which door you use:
 
 | Provider | Free path | In this project |
 | --- | --- | --- |
-| **Google (search)** | **Custom Search JSON API** = 100 queries/day free (needs a free API key + a Programmable Search Engine id). | `google_cse` answerer — set `GOOGLE_API_KEY` + `GOOGLE_CSE_ID`. |
+| **Google (search)** | **SerpAPI** free plan: 250 searches/month. Google's own Custom Search JSON API is closed to new customers and shuts down on 2027-01-01. | `google_serpapi` answerer with `SERPAPI_API_KEY`. (`google_cse` only works for existing Custom Search customers, until the shutdown.) |
 | **Google (LLM)** | Gemini API free tier, via its OpenAI-compatible endpoint. | `openai` backend with `OPENAI_BASE_URL=…/v1beta/openai`. |
 | **DuckDuckGo** | No key, ever. | `duckduckgo` answerer (default). |
-| **Perplexity** | No free API tier — **but Perplexity Pro** includes **$5/month** of API credits, enough for small runs. | `perplexity` answerer with your `PERPLEXITY_API_KEY`. |
+| **Perplexity** | No free API tier (pay-as-you-go credits). Perplexity has deprecated the Sonar chat-completions API this answerer calls in favor of its Agent API, so it may stop working. | `perplexity` answerer with your `PERPLEXITY_API_KEY`. |
 | **Anthropic (Claude)** | No standing free tier; new API accounts sometimes get a small trial credit. Your Claude.ai / Claude Code **subscription is not usable as an API key.** | `llm_websearch` / `anthropic` judge with `ANTHROPIC_API_KEY`. |
 
-So: DuckDuckGo and OpenRouter/Gemini/Groq/Ollama are truly free; Google search is
-free at 100/day; Perplexity is free only via a Pro subscription's credits; and
-Anthropic effectively needs paid (or trial) API credit.
+So: DuckDuckGo and OpenRouter/Gemini/Groq/Ollama are truly free; Google results
+are free for 250 searches/month through SerpAPI; Perplexity and Anthropic need
+paid (or trial) API credit.
 
 ## Keeping it free — the knobs
 
@@ -175,7 +176,9 @@ Anthropic effectively needs paid (or trial) API credit.
   OpenRouter signup (used to summarize the results).
 - **`llm_direct`:** an LLM answering from memory — no search key. A useful
   baseline: does search actually beat a plain LLM on obscure questions?
-- **`google_cse`:** free Google results (100/day). `tavily` has a free tier too.
+- **`google_serpapi`:** Google results, free for 250 searches/month. `tavily` has
+  a free tier too. (`google_cse` uses Google's Custom Search JSON API, which is
+  closed to new customers and shuts down on 2027-01-01.)
 - **Caching:** every answer and judgement is cached under `.cache/`, so re-runs
   and report tweaks cost nothing. Use `--no-cache` to force a fresh run.
 
@@ -190,7 +193,7 @@ correct answer, and the grading criteria:
   prompt: What obscure thing do you want to know?
   reference_answer: The known-correct answer — the "truth" the judge checks against.
   wanted: The single key fact that counts as "found it" (the found-it criterion).
-  tags: [whatever]                      # optional labels for slicing results
+  tags: [whatever]                      # optional labels, saved in the results JSON
 ```
 
 - **Answers / ground truth** → `reference_answer`. The judge scores *truthful*
@@ -273,9 +276,9 @@ class MyEngineAnswerer(Answerer):
 ```
 
 Then import it in `src/papich_bench/answerers/__init__.py`, add any secret to
-`config.Settings`, and reference `my_engine` in your config. Timing, error
-capture, conversation context, and caching are handled for you by the base class
-(it calls your `_answer` from `run(prompt, step_id)`).
+`config.Settings`, and reference `my_engine` in your config. The base class adds
+timing and error capture (it calls your `_answer` from `run(prompt, step_id)`),
+and the runner handles conversation context and caching.
 
 ## Layout
 
